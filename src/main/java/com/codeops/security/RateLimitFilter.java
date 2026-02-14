@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
-public class RateLimitingFilter extends OncePerRequestFilter {
+public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_AUTH_REQUESTS_PER_MINUTE = 10;
     private static final long WINDOW_MS = 60_000L;

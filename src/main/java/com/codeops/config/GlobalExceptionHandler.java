@@ -63,12 +63,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CodeOpsException.class)
     public ResponseEntity<ErrorResponse> handleCodeOps(CodeOpsException ex) {
         log.error("Application exception: {}", ex.getMessage(), ex);
-        return ResponseEntity.status(500).body(new ErrorResponse(500, "Internal server error"));
+        return ResponseEntity.status(500).body(new ErrorResponse(500, "An internal error occurred"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);
-        return ResponseEntity.status(500).body(new ErrorResponse(500, "Internal server error"));
+        return ResponseEntity.status(500).body(new ErrorResponse(500, "An internal error occurred"));
     }
 }

@@ -12,6 +12,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +48,10 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
-        verifyCurrentUserIsAdmin();
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (!SecurityUtils.isAdmin()) {
+            throw new AccessDeniedException("Admin access required");
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return mapToUserResponse(user);
@@ -92,7 +96,8 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<SystemSettingResponse> getAllSettings() {
-        return systemSettingRepository.findAll().stream()
+        List<SystemSetting> settings = systemSettingRepository.findAll();
+        return settings.stream()
                 .map(this::mapToSettingResponse)
                 .toList();
     }

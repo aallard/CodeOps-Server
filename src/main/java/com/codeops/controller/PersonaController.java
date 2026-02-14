@@ -35,7 +35,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> createPersona(@Valid @RequestBody CreatePersonaRequest request) {
         PersonaResponse response = personaService.createPersona(request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_CREATED", "PERSONA", response.id(), null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_CREATED", "PERSONA", response.id(), "");
         return ResponseEntity.status(201).body(response);
     }
 
@@ -67,11 +67,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> getDefaultPersona(@PathVariable UUID teamId,
                                                               @PathVariable AgentType agentType) {
-        PersonaResponse response = personaService.getDefaultPersona(teamId, agentType);
-        if (response == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(personaService.getDefaultPersona(teamId, agentType));
     }
 
     @GetMapping("/mine")
@@ -91,7 +87,7 @@ public class PersonaController {
     public ResponseEntity<PersonaResponse> updatePersona(@PathVariable UUID personaId,
                                                           @Valid @RequestBody UpdatePersonaRequest request) {
         PersonaResponse response = personaService.updatePersona(personaId, request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_UPDATED", "PERSONA", personaId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_UPDATED", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);
     }
 
@@ -100,7 +96,7 @@ public class PersonaController {
     public ResponseEntity<Void> deletePersona(@PathVariable UUID personaId) {
         PersonaResponse persona = personaService.getPersona(personaId);
         personaService.deletePersona(personaId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), persona.teamId(), "PERSONA_DELETED", "PERSONA", personaId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), persona.teamId(), "PERSONA_DELETED", "PERSONA", personaId, "");
         return ResponseEntity.noContent().build();
     }
 
@@ -108,7 +104,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> setAsDefault(@PathVariable UUID personaId) {
         PersonaResponse response = personaService.setAsDefault(personaId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_SET_DEFAULT", "PERSONA", personaId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_SET_DEFAULT", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);
     }
 
@@ -116,7 +112,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> removeDefault(@PathVariable UUID personaId) {
         PersonaResponse response = personaService.removeDefault(personaId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_REMOVED_DEFAULT", "PERSONA", personaId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_REMOVED_DEFAULT", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);
     }
 }

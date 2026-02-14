@@ -34,7 +34,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> createProject(@PathVariable UUID teamId,
                                                          @Valid @RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.createProject(teamId, request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "PROJECT_CREATED", "PROJECT", response.id(), null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "PROJECT_CREATED", "PROJECT", response.id(), "");
         return ResponseEntity.status(201).body(response);
     }
 
@@ -61,7 +61,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> updateProject(@PathVariable UUID projectId,
                                                          @Valid @RequestBody UpdateProjectRequest request) {
         ProjectResponse response = projectService.updateProject(projectId, request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PROJECT_UPDATED", "PROJECT", projectId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PROJECT_UPDATED", "PROJECT", projectId, "");
         return ResponseEntity.ok(response);
     }
 
@@ -70,7 +70,7 @@ public class ProjectController {
     public ResponseEntity<Void> archiveProject(@PathVariable UUID projectId) {
         ProjectResponse project = projectService.getProject(projectId);
         projectService.archiveProject(projectId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_ARCHIVED", "PROJECT", projectId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_ARCHIVED", "PROJECT", projectId, "");
         return ResponseEntity.ok().build();
     }
 
@@ -79,7 +79,7 @@ public class ProjectController {
     public ResponseEntity<Void> unarchiveProject(@PathVariable UUID projectId) {
         ProjectResponse project = projectService.getProject(projectId);
         projectService.unarchiveProject(projectId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_UNARCHIVED", "PROJECT", projectId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_UNARCHIVED", "PROJECT", projectId, "");
         return ResponseEntity.ok().build();
     }
 
@@ -88,7 +88,7 @@ public class ProjectController {
     public ResponseEntity<Void> deleteProject(@PathVariable UUID projectId) {
         ProjectResponse project = projectService.getProject(projectId);
         projectService.deleteProject(projectId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_DELETED", "PROJECT", projectId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_DELETED", "PROJECT", projectId, "");
         return ResponseEntity.noContent().build();
     }
 }

@@ -106,7 +106,7 @@ public class PersonaService {
     public PersonaResponse getDefaultPersona(UUID teamId, AgentType agentType) {
         return personaRepository.findByTeamIdAndAgentTypeAndIsDefaultTrue(teamId, agentType)
                 .map(this::mapToResponse)
-                .orElse(null);
+                .orElseThrow(() -> new EntityNotFoundException("No default persona found for agent type: " + agentType));
     }
 
     @Transactional(readOnly = true)

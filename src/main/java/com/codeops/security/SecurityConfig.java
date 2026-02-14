@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final RateLimitingFilter rateLimitingFilter;
+    private final RateLimitFilter rateLimitingFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
