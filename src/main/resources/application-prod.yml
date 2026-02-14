@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+
+codeops:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-hours: 24
+    refresh-expiration-days: 30
+  aws:
+    s3:
+      enabled: true
+      bucket: ${S3_BUCKET}
+      region: ${AWS_REGION}
+    ses:
+      enabled: true
+      from-email: ${SES_FROM_EMAIL}
+      region: ${AWS_REGION}
+
+logging:
+  level:
+    com.codeops: INFO

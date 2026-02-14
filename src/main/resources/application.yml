@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: codeops-server
+  profiles:
+    active: dev
+
+server:
+  port: 8090

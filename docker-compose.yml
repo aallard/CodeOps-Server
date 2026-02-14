@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codeops-db
+    environment:
+      POSTGRES_DB: codeops
+      POSTGRES_USER: codeops
+      POSTGRES_PASSWORD: codeops
+    ports:
+      - "5432:5432"
+    volumes:
+      - codeops_data:/var/lib/postgresql/data
+
+volumes:
+  codeops_data:
