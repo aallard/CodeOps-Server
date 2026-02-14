@@ -26,6 +26,9 @@ codeops:
     expiration-hours: 24
     refresh-expiration-days: 30
 
+  encryption:
+    key: dev-encryption-key-minimum-32-characters
+
   # AWS (local dev — use localstack or disable)
   aws:
     s3:
@@ -36,6 +39,9 @@ codeops:
       enabled: false
       from-email: noreply@codeops.dev
       region: us-east-1
+
+  local-storage:
+    path: ${user.home}/.codeops/storage
 
 logging:
   level:
