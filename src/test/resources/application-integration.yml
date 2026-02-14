@@ -1,0 +1,48 @@
+spring:
+  datasource:
+    # Overridden by @DynamicPropertySource from Testcontainers
+    url: jdbc:postgresql://localhost:5432/codeops_test
+    username: test
+    password: test
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    open-in-view: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+  flyway:
+    enabled: false
+
+codeops:
+  jwt:
+    secret: integration-test-secret-key-minimum-32-characters-long-for-hs256
+    expiration-hours: 24
+    refresh-expiration-days: 30
+  encryption:
+    key: integration-test-encryption-key-32ch
+  cors:
+    allowed-origins: http://localhost
+  aws:
+    s3:
+      enabled: false
+      bucket: test-bucket
+      region: us-east-1
+    ses:
+      enabled: false
+      from-email: test@codeops.dev
+      region: us-east-1
+  local-storage:
+    path: ${java.io.tmpdir}/codeops-integration-test-storage
+
+logging:
+  level:
+    com.codeops: WARN
+    org.hibernate.SQL: WARN
