@@ -3,6 +3,7 @@ package com.codeops.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
@@ -10,6 +11,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Embeddable
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectDirectiveId implements Serializable {

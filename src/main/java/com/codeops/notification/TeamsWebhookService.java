@@ -1,0 +1,81 @@
+package com.codeops.notification;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.*;
+
+@Service
+@Slf4j
+public class TeamsWebhookService {
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public TeamsWebhookService() {
+        this.restTemplate = new RestTemplate();
+        this.objectMapper = new ObjectMapper();
+    }
+
+    public void postMessage(String webhookUrl, String title, String subtitle, Map<String, String> facts, String actionUrl) {
+        if (webhookUrl == null || webhookUrl.isBlank()) return;
+
+        try {
+            List<Map<String, String>> factsList = new ArrayList<>();
+            facts.forEach((key, value) -> factsList.add(Map.of("name", key, "value", value)));
+
+            Map<String, Object> section = new LinkedHashMap<>();
+            section.put("activityTitle", subtitle);
+            section.put("facts", factsList);
+            section.put("markdown", true);
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("@type", "MessageCard");
+            payload.put("@context", "http://schema.org/extensions");
+            payload.put("summary", title);
+            payload.put("themeColor", "0076D7");
+            payload.put("title", title);
+            payload.put("sections", List.of(section));
+
+            if (actionUrl != null) {
+                Map<String, Object> action = new LinkedHashMap<>();
+                action.put("@type", "OpenUri");
+                action.put("name", "View in CodeOps");
+                action.put("targets", List.of(Map.of("os", "default", "uri", actionUrl)));
+                payload.put("potentialAction", List.of(action));
+            }
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
+            restTemplate.postForEntity(webhookUrl, entity, String.class);
+        } catch (Exception e) {
+            log.error("Failed to post to Teams webhook: {}", e.getMessage());
+        }
+    }
+
+    public void postJobCompleted(String webhookUrl, String projectName, String branch, int healthScore, int criticalCount, int highCount, String runBy) {
+        LinkedHashMap<String, String> facts = new LinkedHashMap<>();
+        facts.put("Project", projectName);
+        facts.put("Branch", branch);
+        facts.put("Health Score", healthScore + "/100");
+        facts.put("Critical", String.valueOf(criticalCount));
+        facts.put("High", String.valueOf(highCount));
+        facts.put("Run By", runBy);
+        postMessage(webhookUrl, "CodeOps — Audit Complete", projectName + " | " + branch, facts, null);
+    }
+
+    public void postCriticalAlert(String webhookUrl, String projectName, int criticalCount) {
+        LinkedHashMap<String, String> facts = new LinkedHashMap<>();
+        facts.put("Project", projectName);
+        facts.put("Critical Findings", String.valueOf(criticalCount));
+        facts.put("Action Required", "Immediate review recommended");
+        postMessage(webhookUrl, "CodeOps — Critical Alert", projectName, facts, null);
+    }
+}
