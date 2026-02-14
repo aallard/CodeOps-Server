@@ -58,4 +58,8 @@ public class AgentRun extends BaseEntity {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

@@ -5,11 +5,13 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.spec.KeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -20,7 +22,12 @@ public class EncryptionService {
 
     public EncryptionService(@Value("${codeops.encryption.key}") String key) {
         try {
-            byte[] keyBytes = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+            // PBKDF2 key derivation — significantly stronger than raw SHA-256
+            byte[] salt = "codeops-static-salt-v1".getBytes(StandardCharsets.UTF_8);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec spec = new PBEKeySpec(key.toCharArray(), salt, 100_000, 256);
+            byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+            // TODO: Changing key derivation invalidates existing encrypted data — requires re-encryption migration
             this.secretKey = new SecretKeySpec(keyBytes, "AES");
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize encryption key", e);

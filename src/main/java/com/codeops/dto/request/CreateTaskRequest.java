@@ -15,6 +15,6 @@ public record CreateTaskRequest(
         @Size(max = 5000) String description,
         @Size(max = 50000) String promptMd,
         @Size(max = 1000) String promptS3Key,
-        List<UUID> findingIds,
+        @Size(max = 100) List<UUID> findingIds,
         Priority priority
 ) {}

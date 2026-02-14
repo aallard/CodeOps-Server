@@ -81,7 +81,9 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> updateJob(@PathVariable UUID jobId,
                                                   @Valid @RequestBody UpdateJobRequest request) {
-        return ResponseEntity.ok(qaJobService.updateJob(jobId, request));
+        JobResponse response = qaJobService.updateJob(jobId, request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "JOB_UPDATED", "JOB", jobId, null);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{jobId}")

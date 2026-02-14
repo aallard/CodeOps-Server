@@ -15,7 +15,7 @@ public record UpdateProjectRequest(
         UUID jiraConnectionId,
         @Size(max = 50) String jiraProjectKey,
         @Size(max = 200) String jiraDefaultIssueType,
-        List<String> jiraLabels,
+        @Size(max = 100) List<@Size(max = 100) String> jiraLabels,
         @Size(max = 200) String jiraComponent,
         @Size(max = 5000) String techStack,
         Boolean isArchived

@@ -34,10 +34,10 @@ public class AuditLogService {
     public void log(UUID userId, UUID teamId, String action, String entityType, UUID entityId, String details) {
         AuditLog entry = new AuditLog();
         if (userId != null) {
-            entry.setUser(userRepository.getReferenceById(userId));
+            entry.setUser(userRepository.findById(userId).orElse(null));
         }
         if (teamId != null) {
-            entry.setTeam(teamRepository.getReferenceById(teamId));
+            entry.setTeam(teamRepository.findById(teamId).orElse(null));
         }
         entry.setAction(action);
         entry.setEntityType(entityType);

@@ -14,6 +14,8 @@ import com.codeops.security.JwtTokenProvider;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @Transactional
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -34,6 +38,7 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
+            log.warn("Registration attempt with existing email: {}", request.email());
             throw new IllegalArgumentException("Email already registered");
         }
 
@@ -46,6 +51,7 @@ public class AuthService {
                 .isActive(true)
                 .build();
         user = userRepository.save(user);
+        log.info("User registered: userId={}, email={}", user.getId(), user.getEmail());
 
         String token = jwtTokenProvider.generateToken(user, List.of());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
@@ -55,18 +61,24 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed: unknown email {}", request.email());
+                    return new IllegalArgumentException("Invalid credentials");
+                });
 
         if (!user.getIsActive()) {
+            log.warn("Login failed: deactivated account userId={}", user.getId());
             throw new IllegalArgumentException("Account is deactivated");
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            log.warn("Login failed: wrong password for userId={}", user.getId());
             throw new IllegalArgumentException("Invalid credentials");
         }
 
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
+        log.info("Login success: userId={}, email={}", user.getId(), user.getEmail());
 
         List<String> roles = getUserRoles(user.getId());
         String token = jwtTokenProvider.generateToken(user, roles);
@@ -105,6 +117,7 @@ public class AuthService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            log.warn("Password change failed: wrong current password for userId={}", currentUserId);
             throw new IllegalArgumentException("Current password is incorrect");
         }
 
@@ -112,6 +125,7 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+        log.info("Password changed: userId={}", currentUserId);
     }
 
     private void validatePasswordStrength(String password) {

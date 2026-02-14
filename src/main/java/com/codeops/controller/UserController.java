@@ -7,6 +7,8 @@ import com.codeops.service.AuditLogService;
 import com.codeops.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,7 +47,7 @@ public class UserController {
 
     @GetMapping("/search")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam String q) {
+    public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam @NotBlank @Size(min = 2, max = 100) String q) {
         return ResponseEntity.ok(userService.searchUsers(q));
     }
 
@@ -54,7 +56,7 @@ public class UserController {
     public ResponseEntity<Void> deactivateUser(@PathVariable UUID id) {
         userService.deactivateUser(id);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "USER_DEACTIVATED", "USER", id, null);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/activate")
@@ -62,6 +64,6 @@ public class UserController {
     public ResponseEntity<Void> activateUser(@PathVariable UUID id) {
         userService.activateUser(id);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "USER_ACTIVATED", "USER", id, null);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

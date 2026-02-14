@@ -11,9 +11,12 @@ public final class SecurityUtils {
     public static UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getPrincipal() == null) {
-            throw new RuntimeException("No authenticated user");
+            throw new org.springframework.security.access.AccessDeniedException("No authenticated user");
         }
-        return (UUID) auth.getPrincipal();
+        if (!(auth.getPrincipal() instanceof UUID userId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Invalid authentication principal");
+        }
+        return userId;
     }
 
     public static boolean hasRole(String role) {

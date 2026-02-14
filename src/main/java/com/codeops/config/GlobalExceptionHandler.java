@@ -1,6 +1,10 @@
 package com.codeops.config;
 
 import com.codeops.dto.response.ErrorResponse;
+import com.codeops.exception.AuthorizationException;
+import com.codeops.exception.CodeOpsException;
+import com.codeops.exception.NotFoundException;
+import com.codeops.exception.ValidationException;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +28,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.status(400).body(new ErrorResponse(400, ex.getMessage()));
+        log.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity.status(400).body(new ErrorResponse(400, "Invalid request"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -38,6 +43,27 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return ResponseEntity.status(400).body(new ErrorResponse(400, msg));
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCodeOpsNotFound(NotFoundException ex) {
+        return ResponseEntity.status(404).body(new ErrorResponse(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleCodeOpsValidation(ValidationException ex) {
+        return ResponseEntity.status(400).body(new ErrorResponse(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleCodeOpsAuth(AuthorizationException ex) {
+        return ResponseEntity.status(403).body(new ErrorResponse(403, ex.getMessage()));
+    }
+
+    @ExceptionHandler(CodeOpsException.class)
+    public ResponseEntity<ErrorResponse> handleCodeOps(CodeOpsException ex) {
+        log.error("Application exception: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(500).body(new ErrorResponse(500, "Internal server error"));
     }
 
     @ExceptionHandler(Exception.class)

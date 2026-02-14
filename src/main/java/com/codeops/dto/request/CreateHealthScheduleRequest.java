@@ -13,5 +13,5 @@ public record CreateHealthScheduleRequest(
         @NotNull UUID projectId,
         @NotNull ScheduleType scheduleType,
         @Size(max = 200) String cronExpression,
-        @NotEmpty List<AgentType> agentTypes
+        @NotEmpty @Size(max = 20) List<AgentType> agentTypes
 ) {}

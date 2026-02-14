@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -24,6 +25,11 @@ public class ReportController {
     private final ReportStorageService reportStorageService;
 
     private static final Pattern SAFE_S3_KEY = Pattern.compile("^[a-zA-Z0-9/_\\-\\.]+$");
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "application/pdf", "text/plain", "text/markdown", "text/csv",
+            "application/json", "application/xml", "text/xml",
+            "image/png", "image/jpeg", "image/gif");
+    private static final long MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50 MB
 
     private void validateS3Key(String s3Key) {
         if (s3Key == null || s3Key.isBlank()) {
@@ -71,8 +77,19 @@ public class ReportController {
     public ResponseEntity<Map<String, String>> uploadSpecification(
             @PathVariable UUID jobId,
             @RequestParam("file") MultipartFile file) throws IOException {
+        if (file.getSize() > MAX_UPLOAD_SIZE) {
+            throw new IllegalArgumentException("File too large (max 50MB)");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Unsupported file type");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename != null) {
+            filename = filename.replaceAll("[/\\\\]", "_"); // Strip path separators
+        }
         String key = reportStorageService.uploadSpecification(
-                jobId, file.getOriginalFilename(), file.getBytes(), file.getContentType());
+                jobId, filename, file.getBytes(), contentType);
         return ResponseEntity.status(201).body(Map.of("s3Key", key));
     }
 

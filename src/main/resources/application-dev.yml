@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/codeops
-    username: codeops
-    password: codeops
+    username: ${DB_USERNAME:codeops}
+    password: ${DB_PASSWORD:codeops}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
