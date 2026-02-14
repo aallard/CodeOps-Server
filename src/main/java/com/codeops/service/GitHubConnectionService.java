@@ -19,6 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages GitHub connection lifecycle including creation, retrieval, deletion,
+ * and credential decryption for teams.
+ *
+ * <p>All operations enforce team membership or admin/owner role requirements
+ * before proceeding. Credentials are encrypted at rest using AES-256-GCM via
+ * {@link EncryptionService} and are never returned in standard API responses.</p>
+ *
+ * @see IntegrationController
+ * @see GitHubConnection
+ * @see EncryptionService
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -30,6 +42,19 @@ public class GitHubConnectionService {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Creates a new GitHub connection for the specified team.
+     *
+     * <p>Encrypts the provided credentials before persisting. The current user
+     * is recorded as the connection creator.</p>
+     *
+     * @param teamId the ID of the team to associate the connection with
+     * @param request the connection creation request containing name, auth type,
+     *                credentials, and GitHub username
+     * @return the created GitHub connection as a response DTO (credentials excluded)
+     * @throws EntityNotFoundException if the team or current user is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the team
+     */
     public GitHubConnectionResponse createConnection(UUID teamId, CreateGitHubConnectionRequest request) {
         verifyTeamAdmin(teamId);
 
@@ -49,6 +74,13 @@ public class GitHubConnectionService {
         return mapToResponse(connection);
     }
 
+    /**
+     * Retrieves all active GitHub connections for the specified team.
+     *
+     * @param teamId the ID of the team whose connections to retrieve
+     * @return a list of active GitHub connection response DTOs
+     * @throws AccessDeniedException if the current user is not a member of the team
+     */
     @Transactional(readOnly = true)
     public List<GitHubConnectionResponse> getConnections(UUID teamId) {
         verifyTeamMembership(teamId);
@@ -57,6 +89,14 @@ public class GitHubConnectionService {
                 .toList();
     }
 
+    /**
+     * Retrieves a single GitHub connection by its ID.
+     *
+     * @param connectionId the ID of the GitHub connection to retrieve
+     * @return the GitHub connection as a response DTO
+     * @throws EntityNotFoundException if no GitHub connection exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the connection's team
+     */
     @Transactional(readOnly = true)
     public GitHubConnectionResponse getConnection(UUID connectionId) {
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
@@ -65,6 +105,16 @@ public class GitHubConnectionService {
         return mapToResponse(connection);
     }
 
+    /**
+     * Soft-deletes a GitHub connection by setting its active flag to {@code false}.
+     *
+     * <p>The connection record is retained in the database but excluded from
+     * active connection queries.</p>
+     *
+     * @param connectionId the ID of the GitHub connection to deactivate
+     * @throws EntityNotFoundException if no GitHub connection exists with the given ID
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the connection's team
+     */
     public void deleteConnection(UUID connectionId) {
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));
@@ -73,6 +123,18 @@ public class GitHubConnectionService {
         gitHubConnectionRepository.save(connection);
     }
 
+    /**
+     * Decrypts and returns the stored credentials for a GitHub connection.
+     *
+     * <p>Access is restricted to team members with ADMIN or OWNER role.
+     * This method should only be used internally for authenticated GitHub API
+     * calls and must never expose credentials in API responses.</p>
+     *
+     * @param connectionId the ID of the GitHub connection whose credentials to decrypt
+     * @return the decrypted credential string (e.g., personal access token)
+     * @throws EntityNotFoundException if no GitHub connection exists with the given ID
+     * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
+     */
     public String getDecryptedCredentials(UUID connectionId) {
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));

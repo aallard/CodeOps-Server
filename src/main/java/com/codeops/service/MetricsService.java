@@ -20,6 +20,17 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Provides aggregated quality metrics at the project and team levels.
+ *
+ * <p>Computes metrics by combining data from QA jobs, findings, tech debt items,
+ * dependency scans, vulnerability records, and health snapshots. All read operations
+ * verify team membership before returning data.</p>
+ *
+ * @see MetricsController
+ * @see ProjectMetricsResponse
+ * @see TeamMetricsResponse
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,6 +45,19 @@ public class MetricsService {
     private final HealthSnapshotRepository healthSnapshotRepository;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Computes aggregated quality metrics for a single project.
+     *
+     * <p>Metrics include the current and previous health scores, total QA jobs run,
+     * total findings across all jobs, open critical and high findings from the latest
+     * completed job, active tech debt item count, and open vulnerability count from
+     * the latest dependency scan.</p>
+     *
+     * @param projectId the ID of the project whose metrics to compute
+     * @return the aggregated project metrics as a response DTO
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public ProjectMetricsResponse getProjectMetrics(UUID projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -79,6 +103,17 @@ public class MetricsService {
         );
     }
 
+    /**
+     * Computes aggregated quality metrics across all non-archived projects in a team.
+     *
+     * <p>Metrics include total project count, total QA jobs, total findings, average
+     * health score, count of projects below the health threshold (score &lt; 70), and
+     * open critical findings across all projects.</p>
+     *
+     * @param teamId the ID of the team whose metrics to compute
+     * @return the aggregated team metrics as a response DTO
+     * @throws AccessDeniedException if the current user is not a member of the team
+     */
     public TeamMetricsResponse getTeamMetrics(UUID teamId) {
         verifyTeamMembership(teamId);
 
@@ -115,6 +150,18 @@ public class MetricsService {
         );
     }
 
+    /**
+     * Retrieves the health trend for a project over a specified number of days.
+     *
+     * <p>Returns health snapshots captured within the given time window, sorted
+     * in ascending chronological order (oldest first) for trend visualization.</p>
+     *
+     * @param projectId the ID of the project whose health trend to retrieve
+     * @param days the number of days to look back from the current instant
+     * @return a list of health snapshot response DTOs ordered from oldest to newest
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public List<HealthSnapshotResponse> getHealthTrend(UUID projectId, int days) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));

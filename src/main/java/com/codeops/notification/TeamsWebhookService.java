@@ -15,6 +15,18 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
 
+/**
+ * Service for sending notifications to Microsoft Teams channels via incoming webhook connectors.
+ *
+ * <p>Constructs MessageCard-format JSON payloads and posts them to configured webhook URLs
+ * using {@link RestTemplate}. All webhook URLs are validated before use to enforce HTTPS
+ * and reject internal/loopback network addresses (SSRF protection).</p>
+ *
+ * <p>Posting failures are caught and logged at ERROR level without propagating to callers.</p>
+ *
+ * @see NotificationDispatcher
+ * @see com.codeops.config.RestTemplateConfig
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -43,6 +55,22 @@ public class TeamsWebhookService {
         }
     }
 
+    /**
+     * Posts a MessageCard-format notification to the specified Teams webhook URL.
+     *
+     * <p>If the webhook URL is {@code null} or blank, the method returns immediately.
+     * The URL is validated for HTTPS and non-internal address before posting.
+     * An optional action URL adds a "View in CodeOps" button to the card.</p>
+     *
+     * <p>Any exception during serialization or HTTP posting is caught and logged at ERROR level.</p>
+     *
+     * @param webhookUrl the Teams incoming webhook URL (must be HTTPS, non-internal)
+     * @param title      the card title displayed prominently in the notification
+     * @param subtitle   the activity title displayed below the main title
+     * @param facts      a map of key-value pairs displayed as facts in the card body
+     * @param actionUrl  optional URL for a "View in CodeOps" action button, or {@code null} to omit
+     * @throws IllegalArgumentException if the webhook URL is not HTTPS or resolves to an internal address
+     */
     public void postMessage(String webhookUrl, String title, String subtitle, Map<String, String> facts, String actionUrl) {
         if (webhookUrl == null || webhookUrl.isBlank()) return;
         validateWebhookUrl(webhookUrl);
@@ -82,6 +110,18 @@ public class TeamsWebhookService {
         }
     }
 
+    /**
+     * Posts a job-completed notification card to Teams with audit results including
+     * project name, branch, health score, critical/high finding counts, and who ran the job.
+     *
+     * @param webhookUrl    the Teams incoming webhook URL
+     * @param projectName   the name of the audited project
+     * @param branch        the branch that was audited
+     * @param healthScore   the resulting health score (0-100)
+     * @param criticalCount the number of critical findings
+     * @param highCount     the number of high-severity findings
+     * @param runBy         the display name of the user who triggered the job
+     */
     public void postJobCompleted(String webhookUrl, String projectName, String branch, int healthScore, int criticalCount, int highCount, String runBy) {
         LinkedHashMap<String, String> facts = new LinkedHashMap<>();
         facts.put("Project", projectName);
@@ -93,6 +133,14 @@ public class TeamsWebhookService {
         postMessage(webhookUrl, "CodeOps — Audit Complete", projectName + " | " + branch, facts, null);
     }
 
+    /**
+     * Posts a critical alert notification card to Teams indicating that critical findings
+     * require immediate review.
+     *
+     * @param webhookUrl    the Teams incoming webhook URL
+     * @param projectName   the name of the project with critical findings
+     * @param criticalCount the number of critical findings detected
+     */
     public void postCriticalAlert(String webhookUrl, String projectName, int criticalCount) {
         LinkedHashMap<String, String> facts = new LinkedHashMap<>();
         facts.put("Project", projectName);

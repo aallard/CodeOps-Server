@@ -19,6 +19,21 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Provides JWT token generation, parsing, and validation for the CodeOps authentication system.
+ *
+ * <p>Generates HS256-signed access tokens (with user ID, email, and roles as claims) and
+ * refresh tokens (with a {@code "type":"refresh"} claim). Token expiration is configured
+ * via {@link JwtProperties}.</p>
+ *
+ * <p>Validates tokens by verifying the HMAC signature, checking expiration, and consulting
+ * the {@link TokenBlacklistService} to reject revoked tokens. All validation failures are
+ * logged at WARN level without exposing details to callers.</p>
+ *
+ * @see JwtProperties
+ * @see JwtAuthFilter
+ * @see com.codeops.service.TokenBlacklistService
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtTokenProvider {
@@ -28,6 +43,12 @@ public class JwtTokenProvider {
     private final JwtProperties jwtProperties;
     private final TokenBlacklistService tokenBlacklistService;
 
+    /**
+     * Validates that the JWT secret is configured and meets the minimum length requirement
+     * of 32 characters. Invoked automatically after dependency injection.
+     *
+     * @throws IllegalStateException if the secret is null, blank, or shorter than 32 characters
+     */
     @PostConstruct
     public void validateSecret() {
         String secret = jwtProperties.getSecret();
@@ -40,6 +61,16 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes());
     }
 
+    /**
+     * Generates a signed JWT access token containing the user's ID as the subject, along with
+     * email, roles, and a unique JTI claim for revocation support.
+     *
+     * <p>The token expiration is determined by {@link JwtProperties#getExpirationHours()}.</p>
+     *
+     * @param user  the user for whom to generate the token
+     * @param roles the list of role names to embed in the token claims
+     * @return the compact, signed JWT string
+     */
     public String generateToken(User user, List<String> roles) {
         Instant now = Instant.now();
         Instant expiry = now.plus(jwtProperties.getExpirationHours(), ChronoUnit.HOURS);
@@ -55,6 +86,15 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Generates a signed JWT refresh token containing the user's ID as the subject, a
+     * {@code "type":"refresh"} claim to distinguish it from access tokens, and a unique JTI.
+     *
+     * <p>The token expiration is determined by {@link JwtProperties#getRefreshExpirationDays()}.</p>
+     *
+     * @param user the user for whom to generate the refresh token
+     * @return the compact, signed JWT refresh token string
+     */
     public String generateRefreshToken(User user) {
         Instant now = Instant.now();
         Instant expiry = now.plus(jwtProperties.getRefreshExpirationDays(), ChronoUnit.DAYS);
@@ -69,22 +109,52 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Extracts the user ID from the JWT token's subject claim.
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return the user's UUID parsed from the token subject
+     * @throws io.jsonwebtoken.JwtException if the token cannot be parsed or the signature is invalid
+     */
     public UUID getUserIdFromToken(String token) {
         Claims claims = parseClaims(token);
         return UUID.fromString(claims.getSubject());
     }
 
+    /**
+     * Extracts the email address from the JWT token's {@code "email"} claim.
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return the email address stored in the token, or {@code null} if the claim is absent
+     * @throws io.jsonwebtoken.JwtException if the token cannot be parsed or the signature is invalid
+     */
     public String getEmailFromToken(String token) {
         Claims claims = parseClaims(token);
         return claims.get("email", String.class);
     }
 
+    /**
+     * Extracts the list of role names from the JWT token's {@code "roles"} claim.
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return the list of role name strings from the token
+     * @throws io.jsonwebtoken.JwtException if the token cannot be parsed or the signature is invalid
+     */
     @SuppressWarnings("unchecked")
     public List<String> getRolesFromToken(String token) {
         Claims claims = parseClaims(token);
         return claims.get("roles", List.class);
     }
 
+    /**
+     * Validates a JWT token by verifying its signature, expiration, format, and blacklist status.
+     *
+     * <p>Logs all validation failures at WARN level without exposing details to callers.
+     * Checks the token's JTI against the {@link TokenBlacklistService} to reject revoked tokens.</p>
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return {@code true} if the token is valid and not blacklisted, {@code false} otherwise
+     */
     public boolean validateToken(String token) {
         try {
             Claims claims = parseClaims(token);
@@ -108,6 +178,14 @@ public class JwtTokenProvider {
         return false;
     }
 
+    /**
+     * Determines whether the given JWT token is a refresh token by checking for the
+     * {@code "type":"refresh"} claim.
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return {@code true} if the token contains a {@code "type"} claim equal to {@code "refresh"},
+     *         {@code false} otherwise or if the token cannot be parsed
+     */
     public boolean isRefreshToken(String token) {
         try {
             Claims claims = parseClaims(token);
@@ -117,6 +195,15 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * Parses and verifies a JWT token, returning the claims payload.
+     *
+     * <p>The token signature is verified using the configured HMAC secret key.</p>
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return the parsed {@link Claims} from the token payload
+     * @throws io.jsonwebtoken.JwtException if the token is expired, malformed, or has an invalid signature
+     */
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())

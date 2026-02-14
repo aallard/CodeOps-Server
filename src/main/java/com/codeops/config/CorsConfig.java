@@ -9,12 +9,31 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Configures Cross-Origin Resource Sharing (CORS) policy for the CodeOps API.
+ *
+ * <p>Allowed origins are loaded from the {@code codeops.cors.allowed-origins} property
+ * (comma-separated), defaulting to {@code http://localhost:3000} for local development.
+ * Credentials are enabled for JWT bearer token support. Preflight responses are cached
+ * for 3600 seconds (1 hour).</p>
+ *
+ * @see com.codeops.security.SecurityConfig
+ */
 @Configuration
 public class CorsConfig {
 
     @Value("${codeops.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
+    /**
+     * Creates a {@link CorsConfigurationSource} that applies the CORS policy to all endpoints.
+     *
+     * <p>Allows GET, POST, PUT, DELETE, PATCH, and OPTIONS methods. Permits
+     * {@code Authorization}, {@code Content-Type}, and {@code X-Requested-With} request headers.
+     * Exposes the {@code Authorization} header in responses.</p>
+     *
+     * @return the configured CORS configuration source registered for all URL patterns
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

@@ -14,6 +14,25 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Asynchronous notification dispatcher that coordinates sending notifications across
+ * multiple channels (email via SES, Microsoft Teams via webhook).
+ *
+ * <p>All dispatch methods are annotated with {@code @Async} and execute on the application's
+ * async thread pool. Exceptions are caught and logged at ERROR level to prevent notification
+ * failures from propagating to calling services.</p>
+ *
+ * <p>Notification routing logic:</p>
+ * <ul>
+ *   <li>Teams webhooks are sent when a team has a configured {@code teamsWebhookUrl}</li>
+ *   <li>Emails are sent to individual users based on their notification preferences,
+ *       checked via {@link com.codeops.service.NotificationService#shouldNotify}</li>
+ * </ul>
+ *
+ * @see EmailService
+ * @see TeamsWebhookService
+ * @see com.codeops.service.NotificationService
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,6 +45,22 @@ public class NotificationDispatcher {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Dispatches a job-completed notification to the team's Microsoft Teams channel via webhook.
+     *
+     * <p>Executes asynchronously. If the team is not found or has no webhook URL configured,
+     * the notification is silently skipped (with a log message). Any exceptions are caught and
+     * logged at ERROR level.</p>
+     *
+     * @param teamId        the ID of the team that owns the project
+     * @param jobId         the ID of the completed job
+     * @param projectName   the name of the project that was audited
+     * @param branch        the branch that was audited
+     * @param healthScore   the resulting health score (0-100)
+     * @param criticalCount the number of critical findings
+     * @param highCount     the number of high-severity findings
+     * @param runByName     the display name of the user who triggered the job
+     */
     @Async
     public void dispatchJobCompleted(UUID teamId, UUID jobId, String projectName, String branch, int healthScore, int criticalCount, int highCount, String runByName) {
         try {
@@ -44,6 +79,20 @@ public class NotificationDispatcher {
         }
     }
 
+    /**
+     * Dispatches critical finding notifications to the team's Teams channel and to individual
+     * team members via email based on their notification preferences.
+     *
+     * <p>Executes asynchronously. For each team member, checks the user's notification
+     * preferences via {@link com.codeops.service.NotificationService#shouldNotify} before sending
+     * an email alert. Teams webhook is sent if the team has a configured webhook URL.</p>
+     *
+     * @param teamId        the ID of the team that owns the project
+     * @param projectId     the ID of the project with critical findings
+     * @param projectName   the name of the project with critical findings
+     * @param criticalCount the number of critical findings detected
+     * @param jobUrl        the URL to the job details page for reviewing findings
+     */
     @Async
     public void dispatchCriticalFinding(UUID teamId, UUID projectId, String projectName, int criticalCount, String jobUrl) {
         try {
@@ -67,6 +116,17 @@ public class NotificationDispatcher {
         }
     }
 
+    /**
+     * Dispatches a task assignment email notification to the assigned user, if their
+     * notification preferences allow it.
+     *
+     * <p>Executes asynchronously. Checks the user's notification preferences for the
+     * {@code "TASK_ASSIGNED"} event type before sending the email.</p>
+     *
+     * @param userId      the ID of the user being assigned the task
+     * @param taskTitle   the title of the assigned task
+     * @param projectName the name of the project containing the task
+     */
     @Async
     public void dispatchTaskAssigned(UUID userId, String taskTitle, String projectName) {
         try {
@@ -80,6 +140,17 @@ public class NotificationDispatcher {
         }
     }
 
+    /**
+     * Dispatches a team invitation email to the specified recipient.
+     *
+     * <p>Executes asynchronously. Delegates directly to {@link EmailService#sendInvitationEmail}
+     * without checking notification preferences (invitations are always sent).</p>
+     *
+     * @param toEmail     the recipient's email address
+     * @param teamName    the name of the team the user is being invited to
+     * @param inviterName the display name of the user who sent the invitation
+     * @param acceptUrl   the URL the recipient should click to accept the invitation
+     */
     @Async
     public void dispatchInvitation(String toEmail, String teamName, String inviterName, String acceptUrl) {
         try {

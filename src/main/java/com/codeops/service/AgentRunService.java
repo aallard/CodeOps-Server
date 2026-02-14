@@ -19,6 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages the lifecycle of agent runs within QA jobs, including creation, retrieval, and status updates.
+ *
+ * <p>An agent run represents a single execution of a specific {@link AgentType} analysis agent
+ * against a QA job. All operations verify that the current user is a member of the team
+ * that owns the associated project.</p>
+ *
+ * @see AgentRunRepository
+ * @see AgentRun
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,6 +38,15 @@ public class AgentRunService {
     private final QaJobRepository qaJobRepository;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Creates a single agent run for a QA job with initial status {@link AgentStatus#PENDING}
+     * and all finding counters set to zero.
+     *
+     * @param request the creation request containing the job ID and agent type
+     * @return the newly created agent run as a response DTO
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public AgentRunResponse createAgentRun(CreateAgentRunRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -46,6 +65,16 @@ public class AgentRunService {
         return mapToResponse(run);
     }
 
+    /**
+     * Creates multiple agent runs for a QA job in a single batch, one per specified agent type.
+     * Each run is initialized with {@link AgentStatus#PENDING} status and zero finding counters.
+     *
+     * @param jobId      the UUID of the QA job to associate the agent runs with
+     * @param agentTypes the list of agent types to create runs for
+     * @return a list of the newly created agent runs as response DTOs
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public List<AgentRunResponse> createAgentRuns(UUID jobId, List<AgentType> agentTypes) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -66,6 +95,14 @@ public class AgentRunService {
         return runs.stream().map(this::mapToResponse).toList();
     }
 
+    /**
+     * Retrieves all agent runs associated with a given QA job.
+     *
+     * @param jobId the UUID of the QA job to retrieve runs for
+     * @return a list of agent run response DTOs for the specified job
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public List<AgentRunResponse> getAgentRuns(UUID jobId) {
         var job = qaJobRepository.findById(jobId)
@@ -76,6 +113,14 @@ public class AgentRunService {
                 .toList();
     }
 
+    /**
+     * Retrieves a single agent run by its unique identifier.
+     *
+     * @param agentRunId the UUID of the agent run to retrieve
+     * @return the agent run as a response DTO
+     * @throws EntityNotFoundException if no agent run exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public AgentRunResponse getAgentRun(UUID agentRunId) {
         AgentRun run = agentRunRepository.findById(agentRunId)
@@ -84,6 +129,19 @@ public class AgentRunService {
         return mapToResponse(run);
     }
 
+    /**
+     * Partially updates an agent run with the non-null fields from the request.
+     *
+     * <p>Supports updating status, result, report S3 key, score, finding counts,
+     * and completion timestamp. The {@code startedAt} field is only set if it has not
+     * been previously assigned (write-once semantics).</p>
+     *
+     * @param agentRunId the UUID of the agent run to update
+     * @param request    the update request containing fields to modify (null fields are skipped)
+     * @return the updated agent run as a response DTO
+     * @throws EntityNotFoundException if no agent run exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     public AgentRunResponse updateAgentRun(UUID agentRunId, UpdateAgentRunRequest request) {
         AgentRun run = agentRunRepository.findById(agentRunId)
                 .orElseThrow(() -> new EntityNotFoundException("Agent run not found"));

@@ -1,5 +1,15 @@
 package com.codeops.config;
 
+/**
+ * Application-wide constants for the CodeOps platform.
+ *
+ * <p>Defines limits for team membership, file sizes, authentication token lifetimes,
+ * S3 storage prefixes, QA agent configuration, pagination defaults, and notification
+ * scheduling parameters. These values are used across services and controllers to enforce
+ * consistent business rules.</p>
+ *
+ * <p>This class cannot be instantiated.</p>
+ */
 public final class AppConstants {
     private AppConstants() {}
 

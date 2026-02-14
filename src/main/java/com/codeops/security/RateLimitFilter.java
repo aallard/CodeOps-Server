@@ -12,6 +12,20 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Servlet filter that enforces per-IP rate limiting on authentication endpoints
+ * ({@code /api/v1/auth/**}) to prevent brute-force and credential-stuffing attacks.
+ *
+ * <p>Uses an in-memory sliding window strategy backed by a {@link ConcurrentHashMap}.
+ * Each client IP is allowed a maximum of {@value #MAX_AUTH_REQUESTS_PER_MINUTE} requests
+ * per {@value #WINDOW_MS}ms window. Requests exceeding the limit receive a
+ * {@code 429 Too Many Requests} JSON response.</p>
+ *
+ * <p>Client IP is resolved from the {@code X-Forwarded-For} header (first entry) when
+ * present, falling back to {@link HttpServletRequest#getRemoteAddr()} for direct connections.</p>
+ *
+ * @see SecurityConfig
+ */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -20,6 +34,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final ConcurrentHashMap<String, RateWindow> buckets = new ConcurrentHashMap<>();
 
+    /**
+     * Applies rate limiting to authentication endpoint requests and passes all other
+     * requests through without restriction.
+     *
+     * <p>When the rate limit is exceeded, writes a JSON error response with HTTP 429 status
+     * and short-circuits the filter chain (the request is not forwarded to downstream filters
+     * or the servlet).</p>
+     *
+     * @param request  the incoming HTTP request
+     * @param response the HTTP response
+     * @param chain    the filter chain to pass the request/response to
+     * @throws ServletException if a servlet error occurs during filtering
+     * @throws IOException      if an I/O error occurs during filtering
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

@@ -20,6 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Records and retrieves audit log entries for user and team activity tracking.
+ *
+ * <p>The {@link #log} method is annotated with {@code @Async} and executes in a separate thread
+ * to avoid blocking the calling operation. Audit entries capture the acting user, team context,
+ * action performed, and the target entity type and ID.</p>
+ *
+ * @see AuditLogRepository
+ * @see AuditLog
+ */
 @Service
 @RequiredArgsConstructor
 public class AuditLogService {
@@ -29,6 +39,20 @@ public class AuditLogService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Asynchronously writes an audit log entry to the database.
+     *
+     * <p>This method runs on a separate thread via {@code @Async} and uses its own transaction.
+     * If the provided {@code userId} or {@code teamId} cannot be resolved, the corresponding
+     * field is set to {@code null} rather than throwing an exception.</p>
+     *
+     * @param userId     the UUID of the user performing the action, or {@code null} for system actions
+     * @param teamId     the UUID of the team context, or {@code null} if not team-scoped
+     * @param action     a short description of the action performed (e.g., "CREATE", "DELETE")
+     * @param entityType the type of entity affected (e.g., "Project", "QaJob")
+     * @param entityId   the UUID of the affected entity
+     * @param details    additional free-text details about the action
+     */
     @Async
     @Transactional
     public void log(UUID userId, UUID teamId, String action, String entityType, UUID entityId, String details) {
@@ -47,6 +71,14 @@ public class AuditLogService {
         auditLogRepository.save(entry);
     }
 
+    /**
+     * Retrieves a paginated audit log for a specific team, ordered by creation time descending.
+     *
+     * @param teamId   the UUID of the team whose audit log to retrieve
+     * @param pageable the pagination and sorting parameters
+     * @return a page of audit log response DTOs
+     * @throws AccessDeniedException if the current user is not a member of the specified team
+     */
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> getTeamAuditLog(UUID teamId, Pageable pageable) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -56,6 +88,17 @@ public class AuditLogService {
                 .map(this::mapToResponse);
     }
 
+    /**
+     * Retrieves a paginated audit log for a specific user, ordered by creation time descending.
+     *
+     * <p>Users can only access their own audit log; requesting another user's log
+     * results in an access denied error.</p>
+     *
+     * @param userId   the UUID of the user whose audit log to retrieve
+     * @param pageable the pagination and sorting parameters
+     * @return a page of audit log response DTOs
+     * @throws AccessDeniedException if the current user's ID does not match the requested {@code userId}
+     */
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> getUserAuditLog(UUID userId, Pageable pageable) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();

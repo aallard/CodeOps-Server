@@ -16,27 +16,70 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+/**
+ * Centralized exception handler for all REST controllers in the CodeOps API.
+ *
+ * <p>Catches application-specific exceptions ({@link NotFoundException}, {@link ValidationException},
+ * {@link AuthorizationException}, {@link CodeOpsException}), Spring/JPA exceptions
+ * ({@link EntityNotFoundException}, {@link AccessDeniedException}, {@link MethodArgumentNotValidException}),
+ * and general uncaught exceptions. Each handler returns a structured {@link ErrorResponse} with the
+ * appropriate HTTP status code.</p>
+ *
+ * <p>Internal error details are never exposed to clients. Application errors ({@link CodeOpsException})
+ * and unhandled exceptions are logged at ERROR level with full stack traces. Bad requests from
+ * {@link IllegalArgumentException} are logged at WARN level.</p>
+ *
+ * @see com.codeops.dto.response.ErrorResponse
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * Handles JPA {@link EntityNotFoundException} by returning a 404 response with a generic
+     * "Resource not found" message.
+     *
+     * @param ex the thrown entity not found exception
+     * @return a 404 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex) {
         return ResponseEntity.status(404).body(new ErrorResponse(404, "Resource not found"));
     }
 
+    /**
+     * Handles {@link IllegalArgumentException} by returning a 400 response with a generic
+     * "Invalid request" message. Logs the exception message at WARN level.
+     *
+     * @param ex the thrown illegal argument exception
+     * @return a 400 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex) {
         log.warn("Bad request: {}", ex.getMessage());
         return ResponseEntity.status(400).body(new ErrorResponse(400, "Invalid request"));
     }
 
+    /**
+     * Handles Spring Security {@link AccessDeniedException} by returning a 403 response
+     * with an "Access denied" message.
+     *
+     * @param ex the thrown access denied exception
+     * @return a 403 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(AccessDeniedException ex) {
         return ResponseEntity.status(403).body(new ErrorResponse(403, "Access denied"));
     }
 
+    /**
+     * Handles Jakarta Bean Validation failures by returning a 400 response with a comma-separated
+     * list of field-level validation error messages (e.g., {@code "email: must not be blank, name: size must be between 1 and 100"}).
+     *
+     * @param ex the thrown method argument not valid exception containing binding result errors
+     * @return a 400 response with an {@link ErrorResponse} body containing all field error details
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         String msg = ex.getBindingResult().getFieldErrors().stream()
@@ -45,27 +88,63 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(400).body(new ErrorResponse(400, msg));
     }
 
+    /**
+     * Handles CodeOps-specific {@link NotFoundException} by returning a 404 response with
+     * the exception's message as the error detail.
+     *
+     * @param ex the thrown CodeOps not found exception
+     * @return a 404 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsNotFound(NotFoundException ex) {
         return ResponseEntity.status(404).body(new ErrorResponse(404, ex.getMessage()));
     }
 
+    /**
+     * Handles CodeOps-specific {@link ValidationException} by returning a 400 response with
+     * the exception's message as the error detail.
+     *
+     * @param ex the thrown CodeOps validation exception
+     * @return a 400 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsValidation(ValidationException ex) {
         return ResponseEntity.status(400).body(new ErrorResponse(400, ex.getMessage()));
     }
 
+    /**
+     * Handles CodeOps-specific {@link AuthorizationException} by returning a 403 response with
+     * the exception's message as the error detail.
+     *
+     * @param ex the thrown CodeOps authorization exception
+     * @return a 403 response with an {@link ErrorResponse} body
+     */
     @ExceptionHandler(AuthorizationException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsAuth(AuthorizationException ex) {
         return ResponseEntity.status(403).body(new ErrorResponse(403, ex.getMessage()));
     }
 
+    /**
+     * Handles the base {@link CodeOpsException} by returning a 500 response with a generic
+     * error message. Logs the exception at ERROR level with the full stack trace.
+     *
+     * @param ex the thrown CodeOps application exception
+     * @return a 500 response with an {@link ErrorResponse} body (internal details not exposed)
+     */
     @ExceptionHandler(CodeOpsException.class)
     public ResponseEntity<ErrorResponse> handleCodeOps(CodeOpsException ex) {
         log.error("Application exception: {}", ex.getMessage(), ex);
         return ResponseEntity.status(500).body(new ErrorResponse(500, "An internal error occurred"));
     }
 
+    /**
+     * Catch-all handler for any unhandled exceptions not matched by more specific handlers.
+     * Returns a 500 response with a generic error message. Logs the exception at ERROR level
+     * with the full stack trace for diagnostics.
+     *
+     * @param ex the unhandled exception
+     * @return a 500 response with an {@link ErrorResponse} body (internal details not exposed)
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);

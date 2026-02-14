@@ -26,6 +26,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages remediation tasks that are created from QA job findings.
+ *
+ * <p>Remediation tasks represent actionable work items derived from code quality
+ * findings. Each task is associated with a QA job and can reference one or more
+ * findings. Tasks can be assigned to users and tracked through a status lifecycle.</p>
+ *
+ * <p>All operations verify that the calling user is a member of the team that owns
+ * the associated project before proceeding.</p>
+ *
+ * @see TaskController
+ * @see RemediationTask
+ * @see RemediationTaskRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -38,6 +52,19 @@ public class RemediationTaskService {
     private final FindingRepository findingRepository;
     private final S3StorageService s3StorageService;
 
+    /**
+     * Creates a single remediation task for a QA job.
+     *
+     * <p>Resolves the associated job, verifies team membership, resolves any
+     * referenced finding IDs, and persists the task with an initial status of
+     * {@link TaskStatus#PENDING}.</p>
+     *
+     * @param request the task creation request containing job ID, title, description,
+     *                prompt details, finding IDs, and priority
+     * @return the created task as a response DTO
+     * @throws EntityNotFoundException if the referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public TaskResponse createTask(CreateTaskRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -59,6 +86,19 @@ public class RemediationTaskService {
         return mapToResponse(task);
     }
 
+    /**
+     * Creates multiple remediation tasks in bulk for a single QA job.
+     *
+     * <p>All requests must reference the same job ID. Verifies team membership once
+     * for the shared job, then persists all tasks with an initial status of
+     * {@link TaskStatus#PENDING}.</p>
+     *
+     * @param requests the list of task creation requests; all must share the same job ID
+     * @return the list of created tasks as response DTOs, or an empty list if the input is empty
+     * @throws IllegalArgumentException if the requests reference different job IDs
+     * @throws EntityNotFoundException if the referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public List<TaskResponse> createTasks(List<CreateTaskRequest> requests) {
         if (requests.isEmpty()) return List.of();
 
@@ -90,6 +130,15 @@ public class RemediationTaskService {
         return tasks.stream().map(this::mapToResponse).toList();
     }
 
+    /**
+     * Retrieves a paginated list of remediation tasks for a specific QA job.
+     *
+     * @param jobId the ID of the QA job whose tasks to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response containing the job's remediation tasks
+     * @throws EntityNotFoundException if the job is not found
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<TaskResponse> getTasksForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -103,6 +152,14 @@ public class RemediationTaskService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a single remediation task by its ID.
+     *
+     * @param taskId the ID of the task to retrieve
+     * @return the task as a response DTO
+     * @throws EntityNotFoundException if the task is not found
+     * @throws AccessDeniedException if the current user is not a member of the task's team
+     */
     @Transactional(readOnly = true)
     public TaskResponse getTask(UUID taskId) {
         RemediationTask task = remediationTaskRepository.findById(taskId)
@@ -111,6 +168,16 @@ public class RemediationTaskService {
         return mapToResponse(task);
     }
 
+    /**
+     * Retrieves a paginated list of remediation tasks assigned to a specific user.
+     *
+     * <p>Does not perform team membership verification since tasks may span
+     * multiple teams.</p>
+     *
+     * @param userId the ID of the user whose assigned tasks to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response containing tasks assigned to the user
+     */
     @Transactional(readOnly = true)
     public PageResponse<TaskResponse> getTasksAssignedToUser(UUID userId, Pageable pageable) {
         Page<RemediationTask> page = remediationTaskRepository.findByAssignedToId(userId, pageable);
@@ -121,6 +188,18 @@ public class RemediationTaskService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Updates a remediation task's status, assignee, or Jira key.
+     *
+     * <p>Only non-null fields in the request are applied. If an assignee is specified,
+     * the referenced user must exist in the system.</p>
+     *
+     * @param taskId the ID of the task to update
+     * @param request the update request containing optional status, assignee, and Jira key
+     * @return the updated task as a response DTO
+     * @throws EntityNotFoundException if the task or the assigned user is not found
+     * @throws AccessDeniedException if the current user is not a member of the task's team
+     */
     public TaskResponse updateTask(UUID taskId, UpdateTaskRequest request) {
         RemediationTask task = remediationTaskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
@@ -137,6 +216,17 @@ public class RemediationTaskService {
         return mapToResponse(task);
     }
 
+    /**
+     * Uploads a task prompt markdown file to S3 (or local storage).
+     *
+     * <p>The file is stored under the key pattern
+     * {@code tasks/{jobId}/task-{taskNumber}.md} with zero-padded task numbers.</p>
+     *
+     * @param jobId the ID of the QA job the task belongs to
+     * @param taskNumber the task number, used in the storage key (zero-padded to 3 digits)
+     * @param promptMd the markdown content of the task prompt
+     * @return the S3 key (or local storage path) where the prompt was stored
+     */
     public String uploadTaskPrompt(UUID jobId, int taskNumber, String promptMd) {
         String key = "tasks/" + jobId + "/task-" + String.format("%03d", taskNumber) + ".md";
         s3StorageService.upload(key, promptMd.getBytes(StandardCharsets.UTF_8), "text/markdown");

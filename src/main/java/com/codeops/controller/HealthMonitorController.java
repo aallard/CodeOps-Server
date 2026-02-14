@@ -22,6 +22,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * REST controller for project health monitoring operations including schedule
+ * management and health snapshot retrieval with trend analysis.
+ *
+ * <p>Health scores range from 0 to 100 and are tracked over time via periodic
+ * snapshots. All endpoints require authentication.</p>
+ *
+ * @see HealthMonitorService
+ * @see AuditLogService
+ */
 @RestController
 @RequestMapping("/api/v1/health-monitor")
 @RequiredArgsConstructor
@@ -31,6 +41,16 @@ public class HealthMonitorController {
     private final HealthMonitorService healthMonitorService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Creates a new health monitoring schedule for a project.
+     *
+     * <p>POST {@code /api/v1/health-monitor/schedules}</p>
+     *
+     * <p>Side effect: logs a {@code HEALTH_SCHEDULE_CREATED} audit entry.</p>
+     *
+     * @param request the schedule creation payload containing project reference and cron expression
+     * @return the created health schedule (HTTP 201)
+     */
     @PostMapping("/schedules")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthScheduleResponse> createSchedule(@Valid @RequestBody CreateHealthScheduleRequest request) {
@@ -39,12 +59,29 @@ public class HealthMonitorController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Retrieves all health monitoring schedules for a given project.
+     *
+     * <p>GET {@code /api/v1/health-monitor/schedules/project/{projectId}}</p>
+     *
+     * @param projectId the UUID of the project
+     * @return list of health schedules for the project
+     */
     @GetMapping("/schedules/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<HealthScheduleResponse>> getSchedulesForProject(@PathVariable UUID projectId) {
         return ResponseEntity.ok(healthMonitorService.getSchedulesForProject(projectId));
     }
 
+    /**
+     * Updates the active state of a health monitoring schedule.
+     *
+     * <p>PUT {@code /api/v1/health-monitor/schedules/{scheduleId}}</p>
+     *
+     * @param scheduleId the UUID of the schedule to update
+     * @param active     {@code true} to activate, {@code false} to deactivate the schedule
+     * @return the updated health schedule
+     */
     @PutMapping("/schedules/{scheduleId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthScheduleResponse> updateSchedule(@PathVariable UUID scheduleId,
@@ -52,6 +89,16 @@ public class HealthMonitorController {
         return ResponseEntity.ok(healthMonitorService.updateSchedule(scheduleId, active));
     }
 
+    /**
+     * Deletes a health monitoring schedule.
+     *
+     * <p>DELETE {@code /api/v1/health-monitor/schedules/{scheduleId}}</p>
+     *
+     * <p>Side effect: logs a {@code HEALTH_SCHEDULE_DELETED} audit entry.</p>
+     *
+     * @param scheduleId the UUID of the schedule to delete
+     * @return HTTP 204 No Content on successful deletion
+     */
     @DeleteMapping("/schedules/{scheduleId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteSchedule(@PathVariable UUID scheduleId) {
@@ -60,12 +107,30 @@ public class HealthMonitorController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Creates a new health snapshot capturing the current health state of a project.
+     *
+     * <p>POST {@code /api/v1/health-monitor/snapshots}</p>
+     *
+     * @param request the snapshot creation payload containing health metrics
+     * @return the created health snapshot (HTTP 201)
+     */
     @PostMapping("/snapshots")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthSnapshotResponse> createSnapshot(@Valid @RequestBody CreateHealthSnapshotRequest request) {
         return ResponseEntity.status(201).body(healthMonitorService.createSnapshot(request));
     }
 
+    /**
+     * Retrieves a paginated list of health snapshots for a given project.
+     *
+     * <p>GET {@code /api/v1/health-monitor/snapshots/project/{projectId}}</p>
+     *
+     * @param projectId the UUID of the project
+     * @param page      zero-based page index (defaults to 0)
+     * @param size      number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of health snapshots, sorted by capture time descending
+     */
     @GetMapping("/snapshots/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<HealthSnapshotResponse>> getSnapshots(
@@ -77,12 +142,30 @@ public class HealthMonitorController {
         return ResponseEntity.ok(healthMonitorService.getSnapshots(projectId, pageable));
     }
 
+    /**
+     * Retrieves the most recent health snapshot for a given project.
+     *
+     * <p>GET {@code /api/v1/health-monitor/snapshots/project/{projectId}/latest}</p>
+     *
+     * @param projectId the UUID of the project
+     * @return the latest health snapshot for the project
+     */
     @GetMapping("/snapshots/project/{projectId}/latest")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthSnapshotResponse> getLatestSnapshot(@PathVariable UUID projectId) {
         return ResponseEntity.ok(healthMonitorService.getLatestSnapshot(projectId));
     }
 
+    /**
+     * Retrieves a list of the most recent health snapshots for a project to
+     * visualize the health score trend over time.
+     *
+     * <p>GET {@code /api/v1/health-monitor/snapshots/project/{projectId}/trend}</p>
+     *
+     * @param projectId the UUID of the project
+     * @param limit     the maximum number of snapshots to return (defaults to 30)
+     * @return list of health snapshots ordered by capture time, limited to the specified count
+     */
     @GetMapping("/snapshots/project/{projectId}/trend")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<HealthSnapshotResponse>> getHealthTrend(@PathVariable UUID projectId,

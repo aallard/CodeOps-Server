@@ -24,6 +24,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Handles user authentication operations including registration, login, token refresh, and password changes.
+ *
+ * <p>Uses stateless JWT authentication with HS256. Login returns a 24-hour access token and a
+ * 30-day refresh token. Passwords are hashed with BCrypt and validated against configurable
+ * strength requirements (length, uppercase, lowercase, digit, special character).</p>
+ *
+ * @see AuthController
+ * @see JwtTokenProvider
+ * @see UserRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,6 +47,17 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Registers a new user account, hashes the password with BCrypt, and issues JWT tokens.
+     *
+     * <p>Validates that the email is not already registered and that the password meets
+     * strength requirements. The new user is created with {@code isActive=true}. Side effect:
+     * logs the registration event at INFO level.</p>
+     *
+     * @param request the registration request containing email, password, and display name
+     * @return an auth response containing access token, refresh token, and user details
+     * @throws IllegalArgumentException if the email is already registered or the password is too weak
+     */
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             log.warn("Registration attempt with existing email: {}", request.email());
@@ -59,6 +81,17 @@ public class AuthService {
         return new AuthResponse(token, refreshToken, mapToUserResponse(user));
     }
 
+    /**
+     * Authenticates a user with email and password, updates last login timestamp, and issues JWT tokens.
+     *
+     * <p>Verifies the account exists, is active, and the password matches the stored hash.
+     * The generated access token includes the user's team membership roles. Side effect:
+     * updates {@code lastLoginAt} on the user entity and logs success/failure at INFO/WARN level.</p>
+     *
+     * @param request the login request containing email and password
+     * @return an auth response containing access token, refresh token, and user details
+     * @throws IllegalArgumentException if credentials are invalid or the account is deactivated
+     */
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> {
@@ -87,6 +120,17 @@ public class AuthService {
         return new AuthResponse(token, refreshToken, mapToUserResponse(user));
     }
 
+    /**
+     * Exchanges a valid refresh token for a new access token and refresh token pair.
+     *
+     * <p>Validates that the provided token is a legitimate, non-expired refresh token
+     * and that the associated user account is still active. Issues a fresh token pair
+     * with updated roles.</p>
+     *
+     * @param request the refresh token request containing the current refresh token
+     * @return an auth response containing a new access token, refresh token, and user details
+     * @throws IllegalArgumentException if the refresh token is invalid, expired, or the account is deactivated
+     */
     public AuthResponse refreshToken(RefreshTokenRequest request) {
         if (!jwtTokenProvider.validateToken(request.refreshToken())) {
             throw new IllegalArgumentException("Invalid refresh token");
@@ -111,6 +155,17 @@ public class AuthService {
         return new AuthResponse(token, refreshToken, mapToUserResponse(user));
     }
 
+    /**
+     * Changes the password for the currently authenticated user.
+     *
+     * <p>Verifies the current password matches before applying the new one. The new password
+     * must meet strength requirements (minimum length, uppercase, lowercase, digit, special character).
+     * Side effect: logs the password change at INFO level.</p>
+     *
+     * @param request the change password request containing the current and new passwords
+     * @throws EntityNotFoundException if the current user is not found
+     * @throws IllegalArgumentException if the current password is incorrect or the new password is too weak
+     */
     public void changePassword(ChangePasswordRequest request) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         User user = userRepository.findById(currentUserId)

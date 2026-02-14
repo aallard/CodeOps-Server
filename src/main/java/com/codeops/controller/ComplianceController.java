@@ -24,6 +24,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * REST controller for compliance management operations including specifications,
+ * compliance items, and compliance summaries scoped to QA jobs.
+ *
+ * <p>All endpoints require authentication. Authorization is enforced via
+ * {@code @PreAuthorize("isAuthenticated()")} on each method.</p>
+ *
+ * @see ComplianceService
+ * @see AuditLogService
+ */
 @RestController
 @RequestMapping("/api/v1/compliance")
 @RequiredArgsConstructor
@@ -33,6 +43,16 @@ public class ComplianceController {
     private final ComplianceService complianceService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Creates a new compliance specification.
+     *
+     * <p>POST {@code /api/v1/compliance/specs}</p>
+     *
+     * <p>Side effect: logs a {@code SPECIFICATION_CREATED} audit entry.</p>
+     *
+     * @param request the specification creation payload
+     * @return the created specification (HTTP 201)
+     */
     @PostMapping("/specs")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SpecificationResponse> createSpecification(@Valid @RequestBody CreateSpecificationRequest request) {
@@ -41,6 +61,16 @@ public class ComplianceController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Retrieves a paginated list of specifications associated with a given job.
+     *
+     * <p>GET {@code /api/v1/compliance/specs/job/{jobId}}</p>
+     *
+     * @param jobId the UUID of the job to retrieve specifications for
+     * @param page  zero-based page index (defaults to 0)
+     * @param size  number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of specification responses, sorted by creation date descending
+     */
     @GetMapping("/specs/job/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<SpecificationResponse>> getSpecificationsForJob(
@@ -52,6 +82,16 @@ public class ComplianceController {
         return ResponseEntity.ok(complianceService.getSpecificationsForJob(jobId, pageable));
     }
 
+    /**
+     * Creates a single compliance item.
+     *
+     * <p>POST {@code /api/v1/compliance/items}</p>
+     *
+     * <p>Side effect: logs a {@code COMPLIANCE_ITEM_CREATED} audit entry.</p>
+     *
+     * @param request the compliance item creation payload
+     * @return the created compliance item (HTTP 201)
+     */
     @PostMapping("/items")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ComplianceItemResponse> createComplianceItem(@Valid @RequestBody CreateComplianceItemRequest request) {
@@ -60,6 +100,16 @@ public class ComplianceController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Creates multiple compliance items in a single batch operation.
+     *
+     * <p>POST {@code /api/v1/compliance/items/batch}</p>
+     *
+     * <p>Side effect: logs a {@code COMPLIANCE_ITEM_CREATED} audit entry for each item created.</p>
+     *
+     * @param requests the list of compliance item creation payloads
+     * @return list of created compliance items (HTTP 201)
+     */
     @PostMapping("/items/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ComplianceItemResponse>> createComplianceItems(@Valid @RequestBody List<CreateComplianceItemRequest> requests) {
@@ -68,6 +118,16 @@ public class ComplianceController {
         return ResponseEntity.status(201).body(responses);
     }
 
+    /**
+     * Retrieves a paginated list of compliance items for a given job.
+     *
+     * <p>GET {@code /api/v1/compliance/items/job/{jobId}}</p>
+     *
+     * @param jobId the UUID of the job to retrieve compliance items for
+     * @param page  zero-based page index (defaults to 0)
+     * @param size  number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of compliance item responses, sorted by creation date descending
+     */
     @GetMapping("/items/job/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<ComplianceItemResponse>> getComplianceItemsForJob(
@@ -79,6 +139,17 @@ public class ComplianceController {
         return ResponseEntity.ok(complianceService.getComplianceItemsForJob(jobId, pageable));
     }
 
+    /**
+     * Retrieves a paginated list of compliance items for a job filtered by compliance status.
+     *
+     * <p>GET {@code /api/v1/compliance/items/job/{jobId}/status/{status}}</p>
+     *
+     * @param jobId  the UUID of the job
+     * @param status the compliance status to filter by
+     * @param page   zero-based page index (defaults to 0)
+     * @param size   number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of compliance items matching the given status, sorted by creation date descending
+     */
     @GetMapping("/items/job/{jobId}/status/{status}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<ComplianceItemResponse>> getComplianceItemsByStatus(
@@ -91,6 +162,15 @@ public class ComplianceController {
         return ResponseEntity.ok(complianceService.getComplianceItemsByStatus(jobId, status, pageable));
     }
 
+    /**
+     * Retrieves an aggregate compliance summary for a given job, including counts
+     * and pass/fail ratios across all compliance items.
+     *
+     * <p>GET {@code /api/v1/compliance/summary/job/{jobId}}</p>
+     *
+     * @param jobId the UUID of the job to summarize
+     * @return a map of summary metric names to their values
+     */
     @GetMapping("/summary/job/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getComplianceSummary(@PathVariable UUID jobId) {

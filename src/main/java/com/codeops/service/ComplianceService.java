@@ -25,6 +25,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages compliance specifications and compliance items for QA jobs.
+ *
+ * <p>Specifications define the reference documents (e.g., standards, guidelines) against which
+ * compliance is measured. Compliance items track individual requirements with statuses of
+ * {@link ComplianceStatus#MET}, {@link ComplianceStatus#PARTIAL}, {@link ComplianceStatus#MISSING},
+ * or {@link ComplianceStatus#NOT_APPLICABLE}. A compliance score is computed as a weighted
+ * percentage where MET counts fully and PARTIAL counts at 50%.</p>
+ *
+ * @see ComplianceController
+ * @see ComplianceItemRepository
+ * @see SpecificationRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -35,6 +48,14 @@ public class ComplianceService {
     private final QaJobRepository qaJobRepository;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Creates a new specification document associated with a QA job.
+     *
+     * @param request the creation request containing job ID, name, spec type, and S3 key
+     * @return the newly created specification as a response DTO
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public SpecificationResponse createSpecification(CreateSpecificationRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -51,6 +72,15 @@ public class ComplianceService {
         return mapSpecToResponse(spec);
     }
 
+    /**
+     * Retrieves a paginated list of specifications associated with a QA job.
+     *
+     * @param jobId    the UUID of the QA job to retrieve specifications for
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing specification DTOs
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<SpecificationResponse> getSpecificationsForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -64,6 +94,14 @@ public class ComplianceService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Creates a single compliance item for a QA job, optionally linked to a specification.
+     *
+     * @param request the creation request containing job ID, requirement text, status, evidence, and optional spec ID
+     * @return the newly created compliance item as a response DTO
+     * @throws EntityNotFoundException if the referenced job or specification does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public ComplianceItemResponse createComplianceItem(CreateComplianceItemRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -83,6 +121,15 @@ public class ComplianceService {
         return mapItemToResponse(item);
     }
 
+    /**
+     * Creates multiple compliance items in a single batch. All items must belong to the same QA job.
+     *
+     * @param requests the list of creation requests; must all reference the same job ID
+     * @return a list of the newly created compliance items as response DTOs, or an empty list if input is empty
+     * @throws IllegalArgumentException if the requests reference different job IDs
+     * @throws EntityNotFoundException if the referenced job or any specification does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public List<ComplianceItemResponse> createComplianceItems(List<CreateComplianceItemRequest> requests) {
         if (requests.isEmpty()) return List.of();
 
@@ -112,6 +159,15 @@ public class ComplianceService {
         return items.stream().map(this::mapItemToResponse).toList();
     }
 
+    /**
+     * Retrieves a paginated list of all compliance items for a QA job.
+     *
+     * @param jobId    the UUID of the QA job to retrieve compliance items for
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing compliance item DTOs
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<ComplianceItemResponse> getComplianceItemsForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -125,6 +181,16 @@ public class ComplianceService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of compliance items for a QA job filtered by compliance status.
+     *
+     * @param jobId    the UUID of the QA job to retrieve compliance items for
+     * @param status   the compliance status to filter by (e.g., MET, PARTIAL, MISSING)
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing compliance item DTOs matching the given status
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<ComplianceItemResponse> getComplianceItemsByStatus(UUID jobId, ComplianceStatus status, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -138,6 +204,19 @@ public class ComplianceService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Computes a compliance summary for a QA job including counts by status and a weighted score.
+     *
+     * <p>The compliance score is calculated as: {@code ((met * 100 + partial * 50) / (total * 100)) * 100},
+     * where MET requirements contribute fully and PARTIAL requirements contribute 50%.
+     * Returns a map with keys: {@code met}, {@code partial}, {@code missing},
+     * {@code notApplicable}, {@code total}, and {@code complianceScore}.</p>
+     *
+     * @param jobId the UUID of the QA job to compute the compliance summary for
+     * @return a map of summary statistic names to their numeric values
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public Map<String, Object> getComplianceSummary(UUID jobId) {
         var job = qaJobRepository.findById(jobId)

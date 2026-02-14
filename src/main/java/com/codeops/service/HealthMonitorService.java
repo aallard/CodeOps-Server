@@ -31,6 +31,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages health monitoring schedules and health snapshots for projects.
+ *
+ * <p>Provides CRUD operations for recurring health check schedules (daily, weekly,
+ * or on-commit) and point-in-time health snapshots that capture project quality
+ * metrics including health score, findings by severity, tech debt score,
+ * dependency score, and test coverage.</p>
+ *
+ * <p>All operations enforce team membership or admin/owner role requirements
+ * before proceeding.</p>
+ *
+ * @see HealthMonitorController
+ * @see HealthSchedule
+ * @see HealthSnapshot
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -44,6 +59,18 @@ public class HealthMonitorService {
     private final QaJobRepository qaJobRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a new health monitoring schedule for a project.
+     *
+     * <p>The next run time is automatically calculated based on the schedule type.
+     * The current user is recorded as the schedule creator.</p>
+     *
+     * @param request the schedule creation request containing project ID, schedule type,
+     *                optional cron expression, and agent types to run
+     * @return the created health schedule as a response DTO
+     * @throws EntityNotFoundException if the project or current user is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
+     */
     public HealthScheduleResponse createSchedule(CreateHealthScheduleRequest request) {
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -63,6 +90,14 @@ public class HealthMonitorService {
         return mapScheduleToResponse(schedule);
     }
 
+    /**
+     * Retrieves all health monitoring schedules for a specific project.
+     *
+     * @param projectId the ID of the project whose schedules to retrieve
+     * @return a list of health schedule response DTOs for the project
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public List<HealthScheduleResponse> getSchedulesForProject(UUID projectId) {
         var project = projectRepository.findById(projectId)
@@ -73,6 +108,14 @@ public class HealthMonitorService {
                 .toList();
     }
 
+    /**
+     * Retrieves all active health monitoring schedules visible to the current user.
+     *
+     * <p>Filters active schedules to only include those belonging to projects
+     * in teams where the current user is a member.</p>
+     *
+     * @return a list of active health schedule response DTOs accessible to the current user
+     */
     @Transactional(readOnly = true)
     public List<HealthScheduleResponse> getActiveSchedules() {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -85,6 +128,18 @@ public class HealthMonitorService {
                 .toList();
     }
 
+    /**
+     * Updates the active status of a health monitoring schedule.
+     *
+     * <p>When reactivating a schedule, the next run time is recalculated based
+     * on the schedule's type and cron expression.</p>
+     *
+     * @param scheduleId the ID of the schedule to update
+     * @param isActive {@code true} to activate the schedule, {@code false} to deactivate it
+     * @return the updated health schedule as a response DTO
+     * @throws EntityNotFoundException if the schedule is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
+     */
     public HealthScheduleResponse updateSchedule(UUID scheduleId, boolean isActive) {
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
@@ -97,6 +152,13 @@ public class HealthMonitorService {
         return mapScheduleToResponse(schedule);
     }
 
+    /**
+     * Permanently deletes a health monitoring schedule.
+     *
+     * @param scheduleId the ID of the schedule to delete
+     * @throws EntityNotFoundException if the schedule is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
+     */
     public void deleteSchedule(UUID scheduleId) {
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
@@ -104,6 +166,15 @@ public class HealthMonitorService {
         healthScheduleRepository.delete(schedule);
     }
 
+    /**
+     * Marks a health monitoring schedule as having been executed.
+     *
+     * <p>Updates the last run timestamp to now and recalculates the next
+     * scheduled run time based on the schedule type.</p>
+     *
+     * @param scheduleId the ID of the schedule to mark as run
+     * @throws EntityNotFoundException if the schedule is not found
+     */
     public void markScheduleRun(UUID scheduleId) {
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
@@ -112,6 +183,19 @@ public class HealthMonitorService {
         healthScheduleRepository.save(schedule);
     }
 
+    /**
+     * Creates a new health snapshot for a project, capturing point-in-time quality metrics.
+     *
+     * <p>The snapshot records health score, findings by severity, tech debt score,
+     * dependency score, and test coverage percentage. Optionally links to a
+     * QA job that generated the data. The capture timestamp is set to the current instant.</p>
+     *
+     * @param request the snapshot creation request containing project ID, optional job ID,
+     *                and quality metric values
+     * @return the created health snapshot as a response DTO
+     * @throws EntityNotFoundException if the project or referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public HealthSnapshotResponse createSnapshot(CreateHealthSnapshotRequest request) {
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -132,6 +216,15 @@ public class HealthMonitorService {
         return mapSnapshotToResponse(snapshot);
     }
 
+    /**
+     * Retrieves a paginated list of health snapshots for a project.
+     *
+     * @param projectId the ID of the project whose snapshots to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response of health snapshot DTOs
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<HealthSnapshotResponse> getSnapshots(UUID projectId, Pageable pageable) {
         var project = projectRepository.findById(projectId)
@@ -146,6 +239,13 @@ public class HealthMonitorService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves the most recent health snapshot for a project.
+     *
+     * @param projectId the ID of the project whose latest snapshot to retrieve
+     * @return the most recent health snapshot as a response DTO
+     * @throws EntityNotFoundException if no health snapshots exist for the project
+     */
     @Transactional(readOnly = true)
     public HealthSnapshotResponse getLatestSnapshot(UUID projectId) {
         return healthSnapshotRepository.findFirstByProjectIdOrderByCapturedAtDesc(projectId)
@@ -153,6 +253,19 @@ public class HealthMonitorService {
                 .orElseThrow(() -> new EntityNotFoundException("No health snapshots found for project"));
     }
 
+    /**
+     * Retrieves a chronologically ordered health trend for a project, limited to the
+     * most recent snapshots.
+     *
+     * <p>Returns snapshots in ascending chronological order (oldest first) to
+     * facilitate trend visualization. The result is capped at the specified limit.</p>
+     *
+     * @param projectId the ID of the project whose health trend to retrieve
+     * @param limit the maximum number of snapshots to include in the trend
+     * @return a list of health snapshot response DTOs ordered from oldest to newest
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public List<HealthSnapshotResponse> getHealthTrend(UUID projectId, int limit) {
         var project = projectRepository.findById(projectId)

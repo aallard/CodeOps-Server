@@ -11,12 +11,32 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
+/**
+ * Configures the asynchronous task execution infrastructure for the CodeOps application.
+ *
+ * <p>Provides a {@link ThreadPoolTaskExecutor} with a core pool of 5 threads, a maximum of 20,
+ * and a queue capacity of 100. Threads are named with the {@code codeops-async-} prefix.
+ * When the queue is full, the {@link ThreadPoolExecutor.CallerRunsPolicy} is used to run
+ * tasks on the calling thread rather than rejecting them.</p>
+ *
+ * <p>Uncaught exceptions in {@code @Async} methods are logged at ERROR level with the
+ * method name and full stack trace.</p>
+ */
 @Configuration
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
+    /**
+     * Creates and initializes the thread pool executor used for all {@code @Async} method
+     * invocations in the application.
+     *
+     * <p>Pool configuration: 5 core threads, 20 max threads, 100-task queue capacity,
+     * {@code codeops-async-} thread name prefix, caller-runs rejection policy.</p>
+     *
+     * @return the configured and initialized {@link Executor}
+     */
     @Override
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -29,6 +49,12 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Provides an exception handler that logs uncaught exceptions thrown by {@code @Async} methods
+     * at ERROR level, including the method name, exception message, and full stack trace.
+     *
+     * @return the {@link AsyncUncaughtExceptionHandler} for logging async failures
+     */
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (throwable, method, params) -> {

@@ -31,6 +31,19 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * REST controller for QA job lifecycle management, including job CRUD, agent run
+ * orchestration, and bug investigation operations.
+ *
+ * <p>Jobs follow a lifecycle of PENDING, RUNNING, COMPLETED, FAILED, or CANCELLED.
+ * Each job can have multiple agent runs (one per agent type) and an optional bug
+ * investigation. All endpoints require authentication.</p>
+ *
+ * @see QaJobService
+ * @see AgentRunService
+ * @see BugInvestigationService
+ * @see AuditLogService
+ */
 @RestController
 @RequestMapping("/api/v1/jobs")
 @RequiredArgsConstructor
@@ -42,6 +55,16 @@ public class JobController {
     private final BugInvestigationService bugInvestigationService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Creates a new QA job.
+     *
+     * <p>POST {@code /api/v1/jobs}</p>
+     *
+     * <p>Side effect: logs a {@code JOB_CREATED} audit entry.</p>
+     *
+     * @param request the job creation payload containing project reference and configuration
+     * @return the created job (HTTP 201)
+     */
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> createJob(@Valid @RequestBody CreateJobRequest request) {
@@ -50,12 +73,30 @@ public class JobController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Retrieves a single QA job by its identifier.
+     *
+     * <p>GET {@code /api/v1/jobs/{jobId}}</p>
+     *
+     * @param jobId the UUID of the job to retrieve
+     * @return the job details
+     */
     @GetMapping("/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> getJob(@PathVariable UUID jobId) {
         return ResponseEntity.ok(qaJobService.getJob(jobId));
     }
 
+    /**
+     * Retrieves a paginated list of job summaries for a given project.
+     *
+     * <p>GET {@code /api/v1/jobs/project/{projectId}}</p>
+     *
+     * @param projectId the UUID of the project
+     * @param page      zero-based page index (defaults to 0)
+     * @param size      number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of job summaries, sorted by creation date descending
+     */
     @GetMapping("/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<JobSummaryResponse>> getJobsForProject(
@@ -67,6 +108,15 @@ public class JobController {
         return ResponseEntity.ok(qaJobService.getJobsForProject(projectId, pageable));
     }
 
+    /**
+     * Retrieves a paginated list of jobs created by the currently authenticated user.
+     *
+     * <p>GET {@code /api/v1/jobs/mine}</p>
+     *
+     * @param page zero-based page index (defaults to 0)
+     * @param size number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of job summaries belonging to the current user, sorted by creation date descending
+     */
     @GetMapping("/mine")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<JobSummaryResponse>> getMyJobs(
@@ -77,6 +127,17 @@ public class JobController {
         return ResponseEntity.ok(qaJobService.getJobsByUser(SecurityUtils.getCurrentUserId(), pageable));
     }
 
+    /**
+     * Updates an existing QA job's properties.
+     *
+     * <p>PUT {@code /api/v1/jobs/{jobId}}</p>
+     *
+     * <p>Side effect: logs a {@code JOB_UPDATED} audit entry.</p>
+     *
+     * @param jobId   the UUID of the job to update
+     * @param request the update payload containing the new job properties
+     * @return the updated job details
+     */
     @PutMapping("/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> updateJob(@PathVariable UUID jobId,
@@ -86,6 +147,16 @@ public class JobController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Deletes a QA job by its identifier.
+     *
+     * <p>DELETE {@code /api/v1/jobs/{jobId}}</p>
+     *
+     * <p>Side effect: logs a {@code JOB_DELETED} audit entry.</p>
+     *
+     * @param jobId the UUID of the job to delete
+     * @return HTTP 204 No Content on successful deletion
+     */
     @DeleteMapping("/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
@@ -94,6 +165,17 @@ public class JobController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Creates a new agent run within a job.
+     *
+     * <p>POST {@code /api/v1/jobs/{jobId}/agents}</p>
+     *
+     * <p>Side effect: logs an {@code AGENT_RUN_CREATED} audit entry.</p>
+     *
+     * @param jobId   the UUID of the parent job
+     * @param request the agent run creation payload containing agent type and configuration
+     * @return the created agent run (HTTP 201)
+     */
     @PostMapping("/{jobId}/agents")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> createAgentRun(@PathVariable UUID jobId,
@@ -103,6 +185,17 @@ public class JobController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Creates multiple agent runs for a job in a single batch operation, one per agent type.
+     *
+     * <p>POST {@code /api/v1/jobs/{jobId}/agents/batch}</p>
+     *
+     * <p>Side effect: logs an {@code AGENT_RUN_CREATED} audit entry for each agent run created.</p>
+     *
+     * @param jobId      the UUID of the parent job
+     * @param agentTypes the list of agent types to create runs for
+     * @return list of created agent runs (HTTP 201)
+     */
     @PostMapping("/{jobId}/agents/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgentRunResponse>> createAgentRunsBatch(
@@ -113,12 +206,31 @@ public class JobController {
         return ResponseEntity.status(201).body(responses);
     }
 
+    /**
+     * Retrieves all agent runs associated with a given job.
+     *
+     * <p>GET {@code /api/v1/jobs/{jobId}/agents}</p>
+     *
+     * @param jobId the UUID of the job
+     * @return list of agent runs for the job
+     */
     @GetMapping("/{jobId}/agents")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgentRunResponse>> getAgentRuns(@PathVariable UUID jobId) {
         return ResponseEntity.ok(agentRunService.getAgentRuns(jobId));
     }
 
+    /**
+     * Updates an existing agent run's properties (e.g., status, results).
+     *
+     * <p>PUT {@code /api/v1/jobs/agents/{agentRunId}}</p>
+     *
+     * <p>Side effect: logs an {@code AGENT_RUN_UPDATED} audit entry.</p>
+     *
+     * @param agentRunId the UUID of the agent run to update
+     * @param request    the update payload containing the new agent run properties
+     * @return the updated agent run details
+     */
     @PutMapping("/agents/{agentRunId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> updateAgentRun(@PathVariable UUID agentRunId,
@@ -128,12 +240,31 @@ public class JobController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Retrieves the bug investigation associated with a given job.
+     *
+     * <p>GET {@code /api/v1/jobs/{jobId}/investigation}</p>
+     *
+     * @param jobId the UUID of the job
+     * @return the bug investigation details for the job
+     */
     @GetMapping("/{jobId}/investigation")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BugInvestigationResponse> getInvestigation(@PathVariable UUID jobId) {
         return ResponseEntity.ok(bugInvestigationService.getInvestigationByJob(jobId));
     }
 
+    /**
+     * Creates a new bug investigation for a job.
+     *
+     * <p>POST {@code /api/v1/jobs/{jobId}/investigation}</p>
+     *
+     * <p>Side effect: logs an {@code INVESTIGATION_CREATED} audit entry.</p>
+     *
+     * @param jobId   the UUID of the parent job
+     * @param request the bug investigation creation payload
+     * @return the created bug investigation (HTTP 201)
+     */
     @PostMapping("/{jobId}/investigation")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BugInvestigationResponse> createInvestigation(
@@ -144,6 +275,17 @@ public class JobController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Updates an existing bug investigation's properties.
+     *
+     * <p>PUT {@code /api/v1/jobs/investigations/{investigationId}}</p>
+     *
+     * <p>Side effect: logs an {@code INVESTIGATION_UPDATED} audit entry.</p>
+     *
+     * @param investigationId the UUID of the bug investigation to update
+     * @param request         the update payload containing the new investigation properties
+     * @return the updated bug investigation details
+     */
     @PutMapping("/investigations/{investigationId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BugInvestigationResponse> updateInvestigation(

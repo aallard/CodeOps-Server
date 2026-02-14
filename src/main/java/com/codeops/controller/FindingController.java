@@ -26,6 +26,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * REST controller for finding management operations including creation, retrieval,
+ * filtering, severity counts, and status updates for QA job findings.
+ *
+ * <p>Findings represent issues discovered during QA agent runs (e.g., code quality
+ * violations, security issues). All endpoints require authentication.</p>
+ *
+ * @see FindingService
+ * @see AuditLogService
+ */
 @RestController
 @RequestMapping("/api/v1/findings")
 @RequiredArgsConstructor
@@ -35,6 +45,16 @@ public class FindingController {
     private final FindingService findingService;
     private final AuditLogService auditLogService;
 
+    /**
+     * Creates a single finding.
+     *
+     * <p>POST {@code /api/v1/findings}</p>
+     *
+     * <p>Side effect: logs a {@code FINDING_CREATED} audit entry.</p>
+     *
+     * @param request the finding creation payload
+     * @return the created finding (HTTP 201)
+     */
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FindingResponse> createFinding(@Valid @RequestBody CreateFindingRequest request) {
@@ -43,6 +63,16 @@ public class FindingController {
         return ResponseEntity.status(201).body(response);
     }
 
+    /**
+     * Creates multiple findings in a single batch operation.
+     *
+     * <p>POST {@code /api/v1/findings/batch}</p>
+     *
+     * <p>Side effect: logs a {@code FINDING_CREATED} audit entry for each finding created.</p>
+     *
+     * @param requests the list of finding creation payloads
+     * @return list of created findings (HTTP 201)
+     */
     @PostMapping("/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FindingResponse>> createFindings(
@@ -52,12 +82,30 @@ public class FindingController {
         return ResponseEntity.status(201).body(responses);
     }
 
+    /**
+     * Retrieves a single finding by its identifier.
+     *
+     * <p>GET {@code /api/v1/findings/{findingId}}</p>
+     *
+     * @param findingId the UUID of the finding to retrieve
+     * @return the finding details
+     */
     @GetMapping("/{findingId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FindingResponse> getFinding(@PathVariable UUID findingId) {
         return ResponseEntity.ok(findingService.getFinding(findingId));
     }
 
+    /**
+     * Retrieves a paginated list of all findings for a given job.
+     *
+     * <p>GET {@code /api/v1/findings/job/{jobId}}</p>
+     *
+     * @param jobId the UUID of the job
+     * @param page  zero-based page index (defaults to 0)
+     * @param size  number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of findings, sorted by creation date descending
+     */
     @GetMapping("/job/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<FindingResponse>> getFindingsForJob(
@@ -69,6 +117,17 @@ public class FindingController {
         return ResponseEntity.ok(findingService.getFindingsForJob(jobId, pageable));
     }
 
+    /**
+     * Retrieves a paginated list of findings for a job filtered by severity level.
+     *
+     * <p>GET {@code /api/v1/findings/job/{jobId}/severity/{severity}}</p>
+     *
+     * @param jobId    the UUID of the job
+     * @param severity the severity level to filter by (e.g., CRITICAL, HIGH, MEDIUM, LOW)
+     * @param page     zero-based page index (defaults to 0)
+     * @param size     number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of findings matching the given severity, sorted by creation date descending
+     */
     @GetMapping("/job/{jobId}/severity/{severity}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<FindingResponse>> getFindingsBySeverity(
@@ -81,6 +140,17 @@ public class FindingController {
         return ResponseEntity.ok(findingService.getFindingsByJobAndSeverity(jobId, severity, pageable));
     }
 
+    /**
+     * Retrieves a paginated list of findings for a job filtered by the agent type that produced them.
+     *
+     * <p>GET {@code /api/v1/findings/job/{jobId}/agent/{agentType}}</p>
+     *
+     * @param jobId     the UUID of the job
+     * @param agentType the type of QA agent to filter by
+     * @param page      zero-based page index (defaults to 0)
+     * @param size      number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of findings produced by the specified agent, sorted by creation date descending
+     */
     @GetMapping("/job/{jobId}/agent/{agentType}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<FindingResponse>> getFindingsByAgent(
@@ -93,6 +163,17 @@ public class FindingController {
         return ResponseEntity.ok(findingService.getFindingsByJobAndAgent(jobId, agentType, pageable));
     }
 
+    /**
+     * Retrieves a paginated list of findings for a job filtered by finding status.
+     *
+     * <p>GET {@code /api/v1/findings/job/{jobId}/status/{status}}</p>
+     *
+     * @param jobId  the UUID of the job
+     * @param status the finding status to filter by
+     * @param page   zero-based page index (defaults to 0)
+     * @param size   number of items per page (defaults to 20, capped at {@link AppConstants#MAX_PAGE_SIZE})
+     * @return paginated list of findings matching the given status, sorted by creation date descending
+     */
     @GetMapping("/job/{jobId}/status/{status}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<FindingResponse>> getFindingsByStatus(
@@ -105,12 +186,31 @@ public class FindingController {
         return ResponseEntity.ok(findingService.getFindingsByJobAndStatus(jobId, status, pageable));
     }
 
+    /**
+     * Retrieves finding counts grouped by severity level for a given job.
+     *
+     * <p>GET {@code /api/v1/findings/job/{jobId}/counts}</p>
+     *
+     * @param jobId the UUID of the job
+     * @return a map of severity levels to their respective finding counts
+     */
     @GetMapping("/job/{jobId}/counts")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<Severity, Long>> getSeverityCounts(@PathVariable UUID jobId) {
         return ResponseEntity.ok(findingService.countFindingsBySeverity(jobId));
     }
 
+    /**
+     * Updates the status of a single finding.
+     *
+     * <p>PUT {@code /api/v1/findings/{findingId}/status}</p>
+     *
+     * <p>Side effect: logs a {@code FINDING_STATUS_UPDATED} audit entry with the new status name.</p>
+     *
+     * @param findingId the UUID of the finding to update
+     * @param request   the status update payload containing the new status
+     * @return the updated finding details
+     */
     @PutMapping("/{findingId}/status")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FindingResponse> updateFindingStatus(
@@ -121,6 +221,16 @@ public class FindingController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Updates the status of multiple findings in a single bulk operation.
+     *
+     * <p>PUT {@code /api/v1/findings/bulk-status}</p>
+     *
+     * <p>Side effect: logs a {@code FINDING_STATUS_UPDATED} audit entry for each finding updated.</p>
+     *
+     * @param request the bulk update payload containing finding IDs and the target status
+     * @return list of updated finding details
+     */
     @PutMapping("/bulk-status")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FindingResponse>> bulkUpdateStatus(

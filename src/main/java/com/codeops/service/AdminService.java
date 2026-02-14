@@ -21,6 +21,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Provides administrative operations for managing users, system settings, and platform usage statistics.
+ *
+ * <p>Most operations in this service require the calling user to have admin privileges,
+ * enforced via {@link SecurityUtils#isAdmin()}. System settings are stored as key-value
+ * pairs and support both creation and update semantics.</p>
+ *
+ * @see AdminController
+ * @see UserRepository
+ * @see SystemSettingRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -39,6 +50,13 @@ public class AdminService {
         }
     }
 
+    /**
+     * Retrieves a paginated list of all users in the system.
+     *
+     * @param pageable the pagination and sorting parameters
+     * @return a page of user response DTOs
+     * @throws AccessDeniedException if the current user is not an admin
+     */
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
         verifyCurrentUserIsAdmin();
@@ -46,6 +64,14 @@ public class AdminService {
                 .map(this::mapToUserResponse);
     }
 
+    /**
+     * Retrieves a single user by their unique identifier.
+     *
+     * @param userId the UUID of the user to retrieve
+     * @return the user as a response DTO
+     * @throws AccessDeniedException if the current user is not an admin
+     * @throws EntityNotFoundException if no user exists with the given ID
+     */
     @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -57,6 +83,17 @@ public class AdminService {
         return mapToUserResponse(user);
     }
 
+    /**
+     * Updates a user's active status based on the provided admin request.
+     *
+     * <p>Currently supports toggling the {@code isActive} flag on a user account.
+     * A deactivated user will be unable to log in.</p>
+     *
+     * @param userId  the UUID of the user to update
+     * @param request the update request containing the new active status
+     * @return the updated user as a response DTO
+     * @throws EntityNotFoundException if no user exists with the given ID
+     */
     public UserResponse updateUserStatus(UUID userId, AdminUpdateUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -67,6 +104,13 @@ public class AdminService {
         return mapToUserResponse(user);
     }
 
+    /**
+     * Retrieves a single system setting by its key.
+     *
+     * @param key the unique setting key to look up
+     * @return the system setting as a response DTO
+     * @throws EntityNotFoundException if no setting exists with the given key
+     */
     @Transactional(readOnly = true)
     public SystemSettingResponse getSystemSetting(String key) {
         SystemSetting setting = systemSettingRepository.findById(key)
@@ -74,6 +118,16 @@ public class AdminService {
         return mapToSettingResponse(setting);
     }
 
+    /**
+     * Creates or updates a system setting identified by the request's key.
+     *
+     * <p>If a setting with the given key already exists, its value and metadata are updated.
+     * Otherwise, a new setting is created. The current user is recorded as the updater.</p>
+     *
+     * @param request the request containing the setting key and new value
+     * @return the created or updated system setting as a response DTO
+     * @throws EntityNotFoundException if the current user is not found
+     */
     public SystemSettingResponse updateSystemSetting(UpdateSystemSettingRequest request) {
         var existing = systemSettingRepository.findById(request.key());
         SystemSetting setting;
@@ -94,6 +148,11 @@ public class AdminService {
         return mapToSettingResponse(setting);
     }
 
+    /**
+     * Retrieves all system settings.
+     *
+     * @return a list of all system settings as response DTOs
+     */
     @Transactional(readOnly = true)
     public List<SystemSettingResponse> getAllSettings() {
         List<SystemSetting> settings = systemSettingRepository.findAll();
@@ -102,6 +161,15 @@ public class AdminService {
                 .toList();
     }
 
+    /**
+     * Retrieves platform-wide usage statistics including counts of users, teams, projects, and QA jobs.
+     *
+     * <p>Returns a map with keys: {@code totalUsers}, {@code activeUsers}, {@code totalTeams},
+     * {@code totalProjects}, and {@code totalJobs}.</p>
+     *
+     * @return a map of statistic names to their numeric values
+     * @throws AccessDeniedException if the current user is not an admin
+     */
     @Transactional(readOnly = true)
     public Map<String, Object> getUsageStats() {
         verifyCurrentUserIsAdmin();

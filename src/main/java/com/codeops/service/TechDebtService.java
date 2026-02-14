@@ -28,6 +28,20 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Manages the lifecycle of technical debt items tracked against projects.
+ *
+ * <p>Technical debt items are categorized by {@link DebtCategory}, prioritized by
+ * {@link BusinessImpact}, and tracked through a {@link DebtStatus} lifecycle. Items
+ * can be linked to the QA job that first detected them and to the job that resolved them.</p>
+ *
+ * <p>All operations verify that the calling user is a member of the team that owns
+ * the associated project. Deletion requires OWNER or ADMIN role.</p>
+ *
+ * @see TechDebtController
+ * @see TechDebtItem
+ * @see TechDebtItemRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -38,6 +52,18 @@ public class TechDebtService {
     private final TeamMemberRepository teamMemberRepository;
     private final QaJobRepository qaJobRepository;
 
+    /**
+     * Creates a single technical debt item for a project.
+     *
+     * <p>The item is persisted with an initial status of {@link DebtStatus#IDENTIFIED}.
+     * If a {@code firstDetectedJobId} is provided, it is resolved and linked to the item.</p>
+     *
+     * @param request the creation request containing project ID, category, title, description,
+     *                file path, effort estimate, business impact, and optional first detected job ID
+     * @return the created tech debt item as a response DTO
+     * @throws EntityNotFoundException if the project or referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public TechDebtItemResponse createTechDebtItem(CreateTechDebtItemRequest request) {
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -59,6 +85,19 @@ public class TechDebtService {
         return mapToResponse(item);
     }
 
+    /**
+     * Creates multiple technical debt items in bulk for a single project.
+     *
+     * <p>All requests must reference the same project ID. Verifies team membership once
+     * for the shared project, then persists all items with an initial status of
+     * {@link DebtStatus#IDENTIFIED}.</p>
+     *
+     * @param requests the list of creation requests; all must share the same project ID
+     * @return the list of created tech debt items as response DTOs, or an empty list if input is empty
+     * @throws IllegalArgumentException if the requests reference different project IDs
+     * @throws EntityNotFoundException if the project or any referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public List<TechDebtItemResponse> createTechDebtItems(List<CreateTechDebtItemRequest> requests) {
         if (requests.isEmpty()) return List.of();
 
@@ -90,6 +129,14 @@ public class TechDebtService {
         return items.stream().map(this::mapToResponse).toList();
     }
 
+    /**
+     * Retrieves a single technical debt item by its ID.
+     *
+     * @param itemId the ID of the tech debt item to retrieve
+     * @return the tech debt item as a response DTO
+     * @throws EntityNotFoundException if the item is not found
+     * @throws AccessDeniedException if the current user is not a member of the item's project team
+     */
     @Transactional(readOnly = true)
     public TechDebtItemResponse getTechDebtItem(UUID itemId) {
         TechDebtItem item = techDebtItemRepository.findById(itemId)
@@ -98,6 +145,15 @@ public class TechDebtService {
         return mapToResponse(item);
     }
 
+    /**
+     * Retrieves a paginated list of all technical debt items for a project.
+     *
+     * @param projectId the ID of the project whose tech debt items to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response containing the project's tech debt items
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtForProject(UUID projectId, Pageable pageable) {
         var project = projectRepository.findById(projectId)
@@ -111,6 +167,16 @@ public class TechDebtService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of technical debt items for a project filtered by status.
+     *
+     * @param projectId the ID of the project whose tech debt items to retrieve
+     * @param status the debt status to filter by
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response containing the matching tech debt items
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtByStatus(UUID projectId, DebtStatus status, Pageable pageable) {
         var project = projectRepository.findById(projectId)
@@ -124,6 +190,16 @@ public class TechDebtService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of technical debt items for a project filtered by category.
+     *
+     * @param projectId the ID of the project whose tech debt items to retrieve
+     * @param category the debt category to filter by
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response containing the matching tech debt items
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtByCategory(UUID projectId, DebtCategory category, Pageable pageable) {
         var project = projectRepository.findById(projectId)
@@ -137,6 +213,18 @@ public class TechDebtService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Updates the status of a technical debt item and optionally links a resolved job.
+     *
+     * <p>If a {@code resolvedJobId} is provided, the referenced job is resolved and
+     * linked as the job that resolved this debt item.</p>
+     *
+     * @param itemId the ID of the tech debt item to update
+     * @param request the update request containing the new status and optional resolved job ID
+     * @return the updated tech debt item as a response DTO
+     * @throws EntityNotFoundException if the item or referenced job is not found
+     * @throws AccessDeniedException if the current user is not a member of the item's project team
+     */
     public TechDebtItemResponse updateTechDebtStatus(UUID itemId, UpdateTechDebtStatusRequest request) {
         TechDebtItem item = techDebtItemRepository.findById(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("Tech debt item not found"));
@@ -151,6 +239,15 @@ public class TechDebtService {
         return mapToResponse(item);
     }
 
+    /**
+     * Permanently deletes a technical debt item.
+     *
+     * <p>Requires the calling user to have OWNER or ADMIN role on the item's project team.</p>
+     *
+     * @param itemId the ID of the tech debt item to delete
+     * @throws EntityNotFoundException if the item is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role
+     */
     public void deleteTechDebtItem(UUID itemId) {
         TechDebtItem item = techDebtItemRepository.findById(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("Tech debt item not found"));
@@ -158,6 +255,23 @@ public class TechDebtService {
         techDebtItemRepository.delete(item);
     }
 
+    /**
+     * Generates an aggregate summary of technical debt for a project.
+     *
+     * <p>Returns a map containing:</p>
+     * <ul>
+     *   <li>{@code total} - total number of tech debt items</li>
+     *   <li>{@code open} - count of items not in RESOLVED status</li>
+     *   <li>{@code critical} - count of items with CRITICAL business impact</li>
+     *   <li>{@code byCategory} - breakdown of item counts by {@link DebtCategory}</li>
+     *   <li>{@code byStatus} - breakdown of item counts by {@link DebtStatus}</li>
+     * </ul>
+     *
+     * @param projectId the ID of the project to summarize
+     * @return a map containing the debt summary statistics
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public Map<String, Object> getDebtSummary(UUID projectId) {
         var project = projectRepository.findById(projectId)

@@ -22,6 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages QA job lifecycle including creation, retrieval, updating, and deletion.
+ *
+ * <p>QA jobs represent automated quality analysis runs against a project's codebase.
+ * Jobs progress through states: PENDING, RUNNING, COMPLETED, FAILED, or CANCELLED.
+ * When a job completes with a health score, the associated project's health score
+ * is automatically updated via {@link ProjectService#updateHealthScore(UUID, int)}.</p>
+ *
+ * <p>All operations enforce team membership requirements. Job deletion requires
+ * admin or owner role on the project's team.</p>
+ *
+ * @see JobController
+ * @see QaJob
+ * @see ProjectService
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -35,6 +50,18 @@ public class QaJobService {
     private final TeamMemberRepository teamMemberRepository;
     private final ProjectService projectService;
 
+    /**
+     * Creates a new QA job for a project with initial PENDING status.
+     *
+     * <p>All finding counters are initialized to zero. The current user is recorded
+     * as the job initiator.</p>
+     *
+     * @param request the job creation request containing project ID, mode, name,
+     *                branch, optional config JSON, and optional Jira ticket key
+     * @return the created job as a response DTO
+     * @throws EntityNotFoundException if the project or current user is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     public JobResponse createJob(CreateJobRequest request) {
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -60,6 +87,14 @@ public class QaJobService {
         return mapToJobResponse(job);
     }
 
+    /**
+     * Retrieves a single QA job by its ID with full detail.
+     *
+     * @param jobId the ID of the job to retrieve
+     * @return the job as a full response DTO including all counters and metadata
+     * @throws EntityNotFoundException if no job exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the job's project team
+     */
     @Transactional(readOnly = true)
     public JobResponse getJob(UUID jobId) {
         QaJob job = qaJobRepository.findById(jobId)
@@ -68,6 +103,15 @@ public class QaJobService {
         return mapToJobResponse(job);
     }
 
+    /**
+     * Retrieves a paginated list of job summaries for a specific project.
+     *
+     * @param projectId the ID of the project whose jobs to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response of job summary DTOs
+     * @throws EntityNotFoundException if the project is not found
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<JobSummaryResponse> getJobsForProject(UUID projectId, Pageable pageable) {
         var project = projectRepository.findById(projectId)
@@ -82,6 +126,13 @@ public class QaJobService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of job summaries started by a specific user.
+     *
+     * @param userId the ID of the user whose jobs to retrieve
+     * @param pageable pagination and sorting parameters
+     * @return a paginated response of job summary DTOs for jobs initiated by the specified user
+     */
     @Transactional(readOnly = true)
     public PageResponse<JobSummaryResponse> getJobsByUser(UUID userId, Pageable pageable) {
         Page<QaJob> page = qaJobRepository.findByStartedById(userId, pageable);
@@ -92,6 +143,20 @@ public class QaJobService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Updates an existing QA job's mutable fields.
+     *
+     * <p>Only non-null fields in the request are applied. When the status transitions
+     * to COMPLETED and a health score is provided, the associated project's health
+     * score is automatically updated as a side effect.</p>
+     *
+     * @param jobId the ID of the job to update
+     * @param request the update request containing optional status, summary markdown,
+     *                overall result, health score, finding counts, and timestamps
+     * @return the updated job as a response DTO
+     * @throws EntityNotFoundException if no job exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the job's project team
+     */
     public JobResponse updateJob(UUID jobId, UpdateJobRequest request) {
         QaJob job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -117,6 +182,15 @@ public class QaJobService {
         return mapToJobResponse(job);
     }
 
+    /**
+     * Permanently deletes a QA job and all associated data.
+     *
+     * <p>Deletion requires OWNER or ADMIN role on the job's project team.</p>
+     *
+     * @param jobId the ID of the job to delete
+     * @throws EntityNotFoundException if no job exists with the given ID
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
+     */
     public void deleteJob(UUID jobId) {
         QaJob job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));

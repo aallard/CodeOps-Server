@@ -19,6 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages Jira connection lifecycle including creation, retrieval, deletion,
+ * and credential decryption for teams.
+ *
+ * <p>All operations enforce team membership or admin/owner role requirements
+ * before proceeding. API tokens are encrypted at rest using AES-256-GCM via
+ * {@link EncryptionService} and are never returned in standard API responses.</p>
+ *
+ * @see IntegrationController
+ * @see JiraConnection
+ * @see EncryptionService
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -30,6 +42,19 @@ public class JiraConnectionService {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Creates a new Jira connection for the specified team.
+     *
+     * <p>Encrypts the provided API token before persisting. The current user
+     * is recorded as the connection creator.</p>
+     *
+     * @param teamId the ID of the team to associate the connection with
+     * @param request the connection creation request containing name, instance URL,
+     *                email, and API token
+     * @return the created Jira connection as a response DTO (API token excluded)
+     * @throws EntityNotFoundException if the team or current user is not found
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the team
+     */
     public JiraConnectionResponse createConnection(UUID teamId, CreateJiraConnectionRequest request) {
         verifyTeamAdmin(teamId);
 
@@ -49,6 +74,13 @@ public class JiraConnectionService {
         return mapToResponse(connection);
     }
 
+    /**
+     * Retrieves all active Jira connections for the specified team.
+     *
+     * @param teamId the ID of the team whose connections to retrieve
+     * @return a list of active Jira connection response DTOs
+     * @throws AccessDeniedException if the current user is not a member of the team
+     */
     @Transactional(readOnly = true)
     public List<JiraConnectionResponse> getConnections(UUID teamId) {
         verifyTeamMembership(teamId);
@@ -57,6 +89,14 @@ public class JiraConnectionService {
                 .toList();
     }
 
+    /**
+     * Retrieves a single Jira connection by its ID.
+     *
+     * @param connectionId the ID of the Jira connection to retrieve
+     * @return the Jira connection as a response DTO
+     * @throws EntityNotFoundException if no Jira connection exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the connection's team
+     */
     @Transactional(readOnly = true)
     public JiraConnectionResponse getConnection(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
@@ -65,6 +105,16 @@ public class JiraConnectionService {
         return mapToResponse(connection);
     }
 
+    /**
+     * Soft-deletes a Jira connection by setting its active flag to {@code false}.
+     *
+     * <p>The connection record is retained in the database but excluded from
+     * active connection queries.</p>
+     *
+     * @param connectionId the ID of the Jira connection to deactivate
+     * @throws EntityNotFoundException if no Jira connection exists with the given ID
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the connection's team
+     */
     public void deleteConnection(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
@@ -73,6 +123,18 @@ public class JiraConnectionService {
         jiraConnectionRepository.save(connection);
     }
 
+    /**
+     * Decrypts and returns the stored API token for a Jira connection.
+     *
+     * <p>Access is restricted to team members with ADMIN or OWNER role.
+     * This method should only be used internally for authenticated Jira API
+     * calls and must never expose the token in API responses.</p>
+     *
+     * @param connectionId the ID of the Jira connection whose API token to decrypt
+     * @return the decrypted API token string
+     * @throws EntityNotFoundException if no Jira connection exists with the given ID
+     * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
+     */
     public String getDecryptedApiToken(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
@@ -86,6 +148,18 @@ public class JiraConnectionService {
         return encryptionService.decrypt(connection.getEncryptedApiToken());
     }
 
+    /**
+     * Retrieves the full connection details for a Jira connection, including
+     * the decrypted API token, instance URL, and email.
+     *
+     * <p>Access is restricted to team members with ADMIN or OWNER role.
+     * Intended for internal use when making authenticated Jira API calls.</p>
+     *
+     * @param connectionId the ID of the Jira connection whose details to retrieve
+     * @return a {@link JiraConnectionDetails} record containing instance URL, email, and decrypted API token
+     * @throws EntityNotFoundException if no Jira connection exists with the given ID
+     * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
+     */
     public JiraConnectionDetails getConnectionDetails(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
@@ -100,6 +174,13 @@ public class JiraConnectionService {
         return new JiraConnectionDetails(connection.getInstanceUrl(), connection.getEmail(), decryptedToken);
     }
 
+    /**
+     * Holds decrypted Jira connection details needed for API authentication.
+     *
+     * @param instanceUrl the base URL of the Jira instance (e.g., {@code https://myorg.atlassian.net})
+     * @param email the email address associated with the Jira API token
+     * @param apiToken the decrypted Jira API token
+     */
     public record JiraConnectionDetails(String instanceUrl, String email, String apiToken) {}
 
     private JiraConnectionResponse mapToResponse(JiraConnection connection) {

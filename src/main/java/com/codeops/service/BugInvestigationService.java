@@ -18,6 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+/**
+ * Manages bug investigation records that link Jira issues to root cause analyses (RCAs).
+ *
+ * <p>Each bug investigation is associated with a QA job and tracks Jira issue metadata,
+ * RCA markdown content, impact assessments, and the status of posting results back to Jira.
+ * RCA documents can be uploaded to S3 storage for persistent access.</p>
+ *
+ * @see BugInvestigationRepository
+ * @see BugInvestigation
+ * @see S3StorageService
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,6 +39,17 @@ public class BugInvestigationService {
     private final TeamMemberRepository teamMemberRepository;
     private final S3StorageService s3StorageService;
 
+    /**
+     * Creates a new bug investigation linked to a QA job with the provided Jira issue data.
+     *
+     * <p>Initializes the investigation with {@code rcaPostedToJira=false} and
+     * {@code fixTasksCreatedInJira=false}.</p>
+     *
+     * @param request the creation request containing job ID, Jira key, summary, description, and related metadata
+     * @return the newly created bug investigation as a response DTO
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public BugInvestigationResponse createInvestigation(CreateBugInvestigationRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -50,6 +72,14 @@ public class BugInvestigationService {
         return mapToResponse(investigation);
     }
 
+    /**
+     * Retrieves a bug investigation by its unique identifier.
+     *
+     * @param investigationId the UUID of the bug investigation to retrieve
+     * @return the bug investigation as a response DTO
+     * @throws EntityNotFoundException if no investigation exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigation(UUID investigationId) {
         BugInvestigation investigation = bugInvestigationRepository.findById(investigationId)
@@ -58,6 +88,14 @@ public class BugInvestigationService {
         return mapToResponse(investigation);
     }
 
+    /**
+     * Retrieves a bug investigation by its associated QA job ID.
+     *
+     * @param jobId the UUID of the QA job linked to the investigation
+     * @return the bug investigation as a response DTO
+     * @throws EntityNotFoundException if no investigation exists for the given job
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigationByJob(UUID jobId) {
         BugInvestigation investigation = bugInvestigationRepository.findByJobId(jobId)
@@ -66,6 +104,14 @@ public class BugInvestigationService {
         return mapToResponse(investigation);
     }
 
+    /**
+     * Retrieves a bug investigation by its Jira issue key (e.g., "PROJ-123").
+     *
+     * @param jiraKey the Jira issue key to look up
+     * @return the bug investigation as a response DTO
+     * @throws EntityNotFoundException if no investigation exists for the given Jira key
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigationByJiraKey(String jiraKey) {
         BugInvestigation investigation = bugInvestigationRepository.findByJiraKey(jiraKey)
@@ -74,6 +120,18 @@ public class BugInvestigationService {
         return mapToResponse(investigation);
     }
 
+    /**
+     * Partially updates a bug investigation with the non-null fields from the request.
+     *
+     * <p>Supports updating the RCA markdown, impact assessment markdown, RCA S3 key,
+     * and Jira posting status flags.</p>
+     *
+     * @param investigationId the UUID of the bug investigation to update
+     * @param request         the update request containing fields to modify (null fields are skipped)
+     * @return the updated bug investigation as a response DTO
+     * @throws EntityNotFoundException if no investigation exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     public BugInvestigationResponse updateInvestigation(UUID investigationId, UpdateBugInvestigationRequest request) {
         BugInvestigation investigation = bugInvestigationRepository.findById(investigationId)
                 .orElseThrow(() -> new EntityNotFoundException("Bug investigation not found"));
@@ -89,6 +147,16 @@ public class BugInvestigationService {
         return mapToResponse(investigation);
     }
 
+    /**
+     * Uploads RCA markdown content to S3 storage under the job's report directory.
+     *
+     * <p>The file is stored at the key pattern {@code reports/{jobId}/rca.md}
+     * with content type {@code text/markdown}.</p>
+     *
+     * @param jobId the UUID of the QA job to associate the RCA with
+     * @param rcaMd the root cause analysis content in markdown format
+     * @return the S3 storage key where the RCA was uploaded
+     */
     public String uploadRca(UUID jobId, String rcaMd) {
         String key = AppConstants.S3_REPORTS + jobId + "/rca.md";
         s3StorageService.upload(key, rcaMd.getBytes(StandardCharsets.UTF_8), "text/markdown");

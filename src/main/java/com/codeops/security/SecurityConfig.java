@@ -15,6 +15,24 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Configures Spring Security for the CodeOps API with stateless JWT-based authentication.
+ *
+ * <p>Key security behaviors:</p>
+ * <ul>
+ *   <li>CSRF is disabled since the API uses stateless JWT tokens (no cookie-based auth)</li>
+ *   <li>Session management is set to {@link SessionCreationPolicy#STATELESS}</li>
+ *   <li>Authentication endpoints ({@code /api/v1/auth/**}), health, and Swagger UI are publicly accessible</li>
+ *   <li>All other {@code /api/**} endpoints require authentication</li>
+ *   <li>Security headers include CSP, HSTS, X-Frame-Options DENY, and X-Content-Type-Options</li>
+ *   <li>{@link RateLimitFilter} and {@link JwtAuthFilter} are registered before the default
+ *       {@link UsernamePasswordAuthenticationFilter}</li>
+ * </ul>
+ *
+ * @see JwtAuthFilter
+ * @see RateLimitFilter
+ * @see CorsConfig
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -25,6 +43,16 @@ public class SecurityConfig {
     private final RateLimitFilter rateLimitingFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
+    /**
+     * Builds the {@link SecurityFilterChain} with stateless session management, JWT authentication,
+     * rate limiting, CORS support, and security response headers.
+     *
+     * <p>Unauthenticated requests to protected endpoints receive a {@code 401 Unauthorized} response.</p>
+     *
+     * @param http the {@link HttpSecurity} builder provided by Spring Security
+     * @return the configured {@link SecurityFilterChain}
+     * @throws Exception if an error occurs during security configuration
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -57,6 +85,11 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Creates a {@link BCryptPasswordEncoder} with a strength factor of 12 for hashing user passwords.
+     *
+     * @return the configured BCrypt password encoder
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

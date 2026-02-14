@@ -23,6 +23,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Manages directives (coding standards, guidelines, policies) and their assignments to projects.
+ *
+ * <p>Directives can be scoped to a team or project level via {@link DirectiveScope}. They are
+ * versioned: updating the content markdown increments the version number. Directives are
+ * assigned to projects through the {@code project_directives} join table and can be individually
+ * enabled or disabled per project. A maximum of {@link AppConstants#MAX_DIRECTIVES_PER_PROJECT}
+ * directives can be assigned to a single project.</p>
+ *
+ * @see DirectiveController
+ * @see DirectiveRepository
+ * @see ProjectDirectiveRepository
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -35,6 +48,19 @@ public class DirectiveService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
 
+    /**
+     * Creates a new directive with the specified scope, category, and markdown content.
+     *
+     * <p>For TEAM-scoped directives, a {@code teamId} is required and the caller must be a team admin.
+     * For PROJECT-scoped directives, a {@code projectId} is required and the caller must be an admin
+     * of the project's team. The directive is initialized at version 1 with the current user as creator.</p>
+     *
+     * @param request the creation request containing name, description, content, category, scope, and optional team/project IDs
+     * @return the newly created directive as a response DTO
+     * @throws IllegalArgumentException if required IDs are missing for the given scope
+     * @throws EntityNotFoundException if the referenced team, project, or current user does not exist
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
+     */
     public DirectiveResponse createDirective(CreateDirectiveRequest request) {
         if (request.scope() == DirectiveScope.TEAM && request.teamId() == null) {
             throw new IllegalArgumentException("teamId is required for TEAM scope directives");
@@ -70,6 +96,16 @@ public class DirectiveService {
         return mapToResponse(directive);
     }
 
+    /**
+     * Retrieves a directive by its unique identifier.
+     *
+     * <p>If the directive is associated with a team or project, team membership is verified.</p>
+     *
+     * @param directiveId the UUID of the directive to retrieve
+     * @return the directive as a response DTO
+     * @throws EntityNotFoundException if no directive exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public DirectiveResponse getDirective(UUID directiveId) {
         Directive directive = directiveRepository.findById(directiveId)
@@ -82,6 +118,13 @@ public class DirectiveService {
         return mapToResponse(directive);
     }
 
+    /**
+     * Retrieves all directives directly associated with a team.
+     *
+     * @param teamId the UUID of the team to retrieve directives for
+     * @return a list of directive response DTOs belonging to the team
+     * @throws AccessDeniedException if the current user is not a member of the team
+     */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesForTeam(UUID teamId) {
         verifyTeamMembership(teamId);
@@ -90,6 +133,14 @@ public class DirectiveService {
                 .toList();
     }
 
+    /**
+     * Retrieves all directives directly associated with a project (not assigned via project_directives).
+     *
+     * @param projectId the UUID of the project to retrieve directives for
+     * @return a list of directive response DTOs scoped to the project
+     * @throws EntityNotFoundException if the referenced project does not exist
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesForProject(UUID projectId) {
         var project = projectRepository.findById(projectId)
@@ -100,6 +151,14 @@ public class DirectiveService {
                 .toList();
     }
 
+    /**
+     * Retrieves directives for a team filtered by directive scope.
+     *
+     * @param teamId the UUID of the team to retrieve directives for
+     * @param scope  the directive scope to filter by (e.g., TEAM, PROJECT)
+     * @return a list of directive response DTOs matching the given scope
+     * @throws AccessDeniedException if the current user is not a member of the team
+     */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesByCategory(UUID teamId, DirectiveScope scope) {
         verifyTeamMembership(teamId);
@@ -108,6 +167,18 @@ public class DirectiveService {
                 .toList();
     }
 
+    /**
+     * Partially updates a directive with the non-null fields from the request.
+     *
+     * <p>If the {@code contentMd} field is updated, the directive's version number is incremented.
+     * Only the original creator or a team admin/owner can perform this operation.</p>
+     *
+     * @param directiveId the UUID of the directive to update
+     * @param request     the update request containing fields to modify (null fields are skipped)
+     * @return the updated directive as a response DTO
+     * @throws EntityNotFoundException if no directive exists with the given ID
+     * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
+     */
     public DirectiveResponse updateDirective(UUID directiveId, UpdateDirectiveRequest request) {
         Directive directive = directiveRepository.findById(directiveId)
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
@@ -125,6 +196,17 @@ public class DirectiveService {
         return mapToResponse(directive);
     }
 
+    /**
+     * Deletes a directive and removes all its project assignments.
+     *
+     * <p>First deletes all rows in the {@code project_directives} join table referencing this
+     * directive, then deletes the directive itself. Only the original creator or a team admin/owner
+     * can perform this operation.</p>
+     *
+     * @param directiveId the UUID of the directive to delete
+     * @throws EntityNotFoundException if no directive exists with the given ID
+     * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
+     */
     public void deleteDirective(UUID directiveId) {
         Directive directive = directiveRepository.findById(directiveId)
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
@@ -133,6 +215,19 @@ public class DirectiveService {
         directiveRepository.delete(directive);
     }
 
+    /**
+     * Assigns a directive to a project, creating an entry in the project_directives join table.
+     *
+     * <p>Enforces the maximum number of directives per project defined by
+     * {@link AppConstants#MAX_DIRECTIVES_PER_PROJECT}. Requires OWNER or ADMIN role
+     * in the project's team.</p>
+     *
+     * @param request the assignment request containing directive ID, project ID, and enabled flag
+     * @return the project directive assignment as a response DTO
+     * @throws EntityNotFoundException if the referenced directive or project does not exist
+     * @throws IllegalArgumentException if the project has reached the maximum directive limit
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
+     */
     public ProjectDirectiveResponse assignToProject(AssignDirectiveRequest request) {
         Directive directive = directiveRepository.findById(request.directiveId())
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
@@ -155,6 +250,14 @@ public class DirectiveService {
         return mapToProjectDirectiveResponse(pd, directive);
     }
 
+    /**
+     * Removes a directive assignment from a project by deleting the project_directives join table entry.
+     *
+     * @param projectId   the UUID of the project to remove the directive from
+     * @param directiveId the UUID of the directive to unassign
+     * @throws EntityNotFoundException if the referenced project does not exist
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
+     */
     public void removeFromProject(UUID projectId, UUID directiveId) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
@@ -162,6 +265,14 @@ public class DirectiveService {
         projectDirectiveRepository.deleteByProjectIdAndDirectiveId(projectId, directiveId);
     }
 
+    /**
+     * Retrieves all directive assignments for a project, including both enabled and disabled directives.
+     *
+     * @param projectId the UUID of the project to retrieve directive assignments for
+     * @return a list of project directive response DTOs
+     * @throws EntityNotFoundException if the referenced project does not exist
+     * @throws AccessDeniedException if the current user is not a member of the project's team
+     */
     @Transactional(readOnly = true)
     public List<ProjectDirectiveResponse> getProjectDirectives(UUID projectId) {
         var project = projectRepository.findById(projectId)
@@ -172,6 +283,15 @@ public class DirectiveService {
                 .toList();
     }
 
+    /**
+     * Retrieves only the enabled directives assigned to a project.
+     *
+     * <p>This is typically used when running QA jobs to determine which directives
+     * should be enforced for the project.</p>
+     *
+     * @param projectId the UUID of the project to retrieve enabled directives for
+     * @return a list of directive response DTOs for enabled assignments only
+     */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getEnabledDirectivesForProject(UUID projectId) {
         return projectDirectiveRepository.findByProjectIdAndEnabledTrue(projectId).stream()
@@ -179,6 +299,16 @@ public class DirectiveService {
                 .toList();
     }
 
+    /**
+     * Toggles the enabled/disabled status of a directive assignment for a project.
+     *
+     * @param projectId   the UUID of the project
+     * @param directiveId the UUID of the directive
+     * @param enabled     {@code true} to enable the directive, {@code false} to disable it
+     * @return the updated project directive assignment as a response DTO
+     * @throws EntityNotFoundException if the project or the directive assignment does not exist
+     * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
+     */
     public ProjectDirectiveResponse toggleProjectDirective(UUID projectId, UUID directiveId, boolean enabled) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));

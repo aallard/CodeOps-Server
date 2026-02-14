@@ -28,6 +28,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages QA findings (code issues, vulnerabilities, tech debt) discovered by analysis agents during QA jobs.
+ *
+ * <p>Findings are created by agents with severity levels and can be filtered by job, severity,
+ * agent type, or status. Status updates record the user who changed the status and a timestamp.
+ * Bulk status updates are supported for batch triage operations. All operations verify team
+ * membership through the job's project association.</p>
+ *
+ * @see FindingController
+ * @see FindingRepository
+ * @see Finding
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -38,6 +50,15 @@ public class FindingService {
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
 
+    /**
+     * Creates a single finding for a QA job with initial status {@link FindingStatus#OPEN}.
+     *
+     * @param request the creation request containing job ID, agent type, severity, title, description,
+     *                file path, line number, recommendation, evidence, effort estimate, and debt category
+     * @return the newly created finding as a response DTO
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public FindingResponse createFinding(CreateFindingRequest request) {
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
@@ -62,6 +83,17 @@ public class FindingService {
         return mapToResponse(finding);
     }
 
+    /**
+     * Creates multiple findings in a single batch. All findings must belong to the same QA job.
+     *
+     * <p>Each finding is initialized with {@link FindingStatus#OPEN} status.</p>
+     *
+     * @param requests the list of creation requests; must all reference the same job ID
+     * @return a list of the newly created findings as response DTOs, or an empty list if input is empty
+     * @throws IllegalArgumentException if the requests reference different job IDs
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     public List<FindingResponse> createFindings(List<CreateFindingRequest> requests) {
         if (requests.isEmpty()) return List.of();
 
@@ -96,6 +128,14 @@ public class FindingService {
         return findings.stream().map(this::mapToResponse).toList();
     }
 
+    /**
+     * Retrieves a single finding by its unique identifier.
+     *
+     * @param findingId the UUID of the finding to retrieve
+     * @return the finding as a response DTO
+     * @throws EntityNotFoundException if no finding exists with the given ID
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     @Transactional(readOnly = true)
     public FindingResponse getFinding(UUID findingId) {
         Finding finding = findingRepository.findById(findingId)
@@ -104,6 +144,15 @@ public class FindingService {
         return mapToResponse(finding);
     }
 
+    /**
+     * Retrieves a paginated list of all findings for a QA job.
+     *
+     * @param jobId    the UUID of the QA job to retrieve findings for
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing finding DTOs
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -118,6 +167,16 @@ public class FindingService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of findings for a QA job filtered by severity level.
+     *
+     * @param jobId    the UUID of the QA job to retrieve findings for
+     * @param severity the severity level to filter by (e.g., CRITICAL, HIGH, MEDIUM, LOW)
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing finding DTOs matching the given severity
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndSeverity(UUID jobId, Severity severity, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -131,6 +190,16 @@ public class FindingService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of findings for a QA job filtered by the agent type that produced them.
+     *
+     * @param jobId     the UUID of the QA job to retrieve findings for
+     * @param agentType the type of agent to filter by
+     * @param pageable  the pagination and sorting parameters
+     * @return a paginated response containing finding DTOs produced by the given agent type
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndAgent(UUID jobId, AgentType agentType, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -144,6 +213,16 @@ public class FindingService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Retrieves a paginated list of findings for a QA job filtered by finding status.
+     *
+     * @param jobId    the UUID of the QA job to retrieve findings for
+     * @param status   the finding status to filter by (e.g., OPEN, RESOLVED, WONT_FIX)
+     * @param pageable the pagination and sorting parameters
+     * @return a paginated response containing finding DTOs matching the given status
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndStatus(UUID jobId, FindingStatus status, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
@@ -157,6 +236,18 @@ public class FindingService {
                 page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
+    /**
+     * Updates the status of a single finding and records who made the change and when.
+     *
+     * <p>Side effects: sets {@code statusChangedBy} to the current user and
+     * {@code statusChangedAt} to the current timestamp.</p>
+     *
+     * @param findingId the UUID of the finding to update
+     * @param request   the status update request containing the new status
+     * @return the updated finding as a response DTO
+     * @throws EntityNotFoundException if the finding or current user does not exist
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     public FindingResponse updateFindingStatus(UUID findingId, UpdateFindingStatusRequest request) {
         Finding finding = findingRepository.findById(findingId)
                 .orElseThrow(() -> new EntityNotFoundException("Finding not found"));
@@ -171,6 +262,18 @@ public class FindingService {
         return mapToResponse(finding);
     }
 
+    /**
+     * Updates the status of multiple findings in a single batch operation.
+     *
+     * <p>All findings must belong to the same QA job. Each finding's {@code statusChangedBy}
+     * is set to the current user and {@code statusChangedAt} to the current timestamp.</p>
+     *
+     * @param request the bulk update request containing a list of finding IDs and the new status
+     * @return a list of the updated findings as response DTOs
+     * @throws EntityNotFoundException if no findings are found for the provided IDs or the current user does not exist
+     * @throws IllegalArgumentException if the findings belong to different jobs
+     * @throws AccessDeniedException if the current user is not a member of the associated team
+     */
     public List<FindingResponse> bulkUpdateFindingStatus(BulkUpdateFindingsRequest request) {
         List<Finding> findings = findingRepository.findAllById(request.findingIds());
         if (findings.isEmpty()) {
@@ -198,6 +301,17 @@ public class FindingService {
         return findings.stream().map(this::mapToResponse).toList();
     }
 
+    /**
+     * Counts findings for a QA job grouped by severity level.
+     *
+     * <p>Returns a map with an entry for every {@link Severity} enum value, where the value
+     * is the count of findings at that severity level (zero if none exist).</p>
+     *
+     * @param jobId the UUID of the QA job to count findings for
+     * @return an {@link EnumMap} mapping each severity level to its finding count
+     * @throws EntityNotFoundException if the referenced job does not exist
+     * @throws AccessDeniedException if the current user is not a member of the job's team
+     */
     @Transactional(readOnly = true)
     public Map<Severity, Long> countFindingsBySeverity(UUID jobId) {
         var job = qaJobRepository.findById(jobId)
