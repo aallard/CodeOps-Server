@@ -13,5 +13,6 @@ public record UpdateAgentRunRequest(
         Integer findingsCount,
         Integer criticalCount,
         Integer highCount,
-        Instant completedAt
+        Instant completedAt,
+        Instant startedAt
 ) {}

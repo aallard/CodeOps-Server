@@ -15,5 +15,6 @@ public record UpdateJobRequest(
         Integer highCount,
         Integer mediumCount,
         Integer lowCount,
-        Instant completedAt
+        Instant completedAt,
+        Instant startedAt
 ) {}
