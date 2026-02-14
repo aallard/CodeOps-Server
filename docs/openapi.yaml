@@ -1,0 +1,5154 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8090
+  description: Generated server url
+paths:
+  /api/v1/users/{id}:
+    get:
+      tags:
+      - Users
+      operationId: getUserById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    put:
+      tags:
+      - Users
+      operationId: updateUser
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /api/v1/users/{id}/deactivate:
+    put:
+      tags:
+      - Users
+      operationId: deactivateUser
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/users/{id}/activate:
+    put:
+      tags:
+      - Users
+      operationId: activateUser
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/tech-debt/{itemId}/status:
+    put:
+      tags:
+      - Tech Debt
+      operationId: updateTechDebtStatus
+      parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTechDebtStatusRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/teams/{teamId}:
+    get:
+      tags:
+      - Teams
+      operationId: getTeam
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+    put:
+      tags:
+      - Teams
+      operationId: updateTeam
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeamRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+    delete:
+      tags:
+      - Teams
+      operationId: deleteTeam
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/teams/{teamId}/members/{userId}/role:
+    put:
+      tags:
+      - Teams
+      operationId: updateMemberRole
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRoleRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamMemberResponse'
+  /api/v1/tasks/{taskId}:
+    get:
+      tags:
+      - Remediation Tasks
+      operationId: getTask
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+    put:
+      tags:
+      - Remediation Tasks
+      operationId: updateTask
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+  /api/v1/projects/{projectId}:
+    get:
+      tags:
+      - Projects
+      operationId: getProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+    put:
+      tags:
+      - Projects
+      operationId: updateProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+    delete:
+      tags:
+      - Projects
+      operationId: deleteProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/projects/{projectId}/unarchive:
+    put:
+      tags:
+      - Projects
+      operationId: unarchiveProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/projects/{projectId}/archive:
+    put:
+      tags:
+      - Projects
+      operationId: archiveProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/personas/{personaId}:
+    get:
+      tags:
+      - Personas
+      operationId: getPersona
+      parameters:
+      - name: personaId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+    put:
+      tags:
+      - Personas
+      operationId: updatePersona
+      parameters:
+      - name: personaId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePersonaRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+    delete:
+      tags:
+      - Personas
+      operationId: deletePersona
+      parameters:
+      - name: personaId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/personas/{personaId}/set-default:
+    put:
+      tags:
+      - Personas
+      operationId: setAsDefault
+      parameters:
+      - name: personaId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/personas/{personaId}/remove-default:
+    put:
+      tags:
+      - Personas
+      operationId: removeDefault
+      parameters:
+      - name: personaId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/jobs/{jobId}:
+    get:
+      tags:
+      - QA Jobs
+      operationId: getJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+    put:
+      tags:
+      - QA Jobs
+      operationId: updateJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+    delete:
+      tags:
+      - QA Jobs
+      operationId: deleteJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/jobs/investigations/{investigationId}:
+    put:
+      tags:
+      - QA Jobs
+      operationId: updateInvestigation
+      parameters:
+      - name: investigationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBugInvestigationRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BugInvestigationResponse'
+  /api/v1/jobs/agents/{agentRunId}:
+    put:
+      tags:
+      - QA Jobs
+      operationId: updateAgentRun
+      parameters:
+      - name: agentRunId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAgentRunRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AgentRunResponse'
+  /api/v1/health-monitor/schedules/{scheduleId}:
+    put:
+      tags:
+      - Health Monitor
+      operationId: updateSchedule
+      parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: active
+        in: query
+        required: true
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HealthScheduleResponse'
+    delete:
+      tags:
+      - Health Monitor
+      operationId: deleteSchedule
+      parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/findings/{findingId}/status:
+    put:
+      tags:
+      - Findings
+      operationId: updateFindingStatus
+      parameters:
+      - name: findingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFindingStatusRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FindingResponse'
+  /api/v1/findings/bulk-status:
+    put:
+      tags:
+      - Findings
+      operationId: bulkUpdateStatus
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateFindingsRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingResponse'
+  /api/v1/directives/{directiveId}:
+    get:
+      tags:
+      - Directives
+      operationId: getDirective
+      parameters:
+      - name: directiveId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DirectiveResponse'
+    put:
+      tags:
+      - Directives
+      operationId: updateDirective
+      parameters:
+      - name: directiveId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectiveRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DirectiveResponse'
+    delete:
+      tags:
+      - Directives
+      operationId: deleteDirective
+      parameters:
+      - name: directiveId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/directives/project/{projectId}/directive/{directiveId}/toggle:
+    put:
+      tags:
+      - Directives
+      operationId: toggleDirective
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: directiveId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: enabled
+        in: query
+        required: true
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectDirectiveResponse'
+  /api/v1/dependencies/vulnerabilities/{vulnerabilityId}/status:
+    put:
+      tags:
+      - Dependencies
+      operationId: updateVulnerabilityStatus
+      parameters:
+      - name: vulnerabilityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - UPDATING
+          - SUPPRESSED
+          - RESOLVED
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/admin/users/{userId}:
+    get:
+      tags:
+      - Admin
+      operationId: getUserById_1
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    put:
+      tags:
+      - Admin
+      operationId: updateUserStatus
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateUserRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /api/v1/admin/settings:
+    get:
+      tags:
+      - Admin
+      operationId: getAllSettings
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SystemSettingResponse'
+    put:
+      tags:
+      - Admin
+      operationId: updateSystemSetting
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSystemSettingRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+  /api/v1/tech-debt:
+    post:
+      tags:
+      - Tech Debt
+      operationId: createTechDebtItem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTechDebtItemRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/tech-debt/batch:
+    post:
+      tags:
+      - Tech Debt
+      operationId: createTechDebtItems
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateTechDebtItemRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/teams:
+    get:
+      tags:
+      - Teams
+      operationId: getTeams
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamResponse'
+    post:
+      tags:
+      - Teams
+      operationId: createTeam
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+  /api/v1/teams/{teamId}/invitations:
+    get:
+      tags:
+      - Teams
+      operationId: getTeamInvitations
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvitationResponse'
+    post:
+      tags:
+      - Teams
+      operationId: inviteMember
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteMemberRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+  /api/v1/teams/invitations/{token}/accept:
+    post:
+      tags:
+      - Teams
+      operationId: acceptInvitation
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+  /api/v1/tasks:
+    post:
+      tags:
+      - Remediation Tasks
+      operationId: createTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+  /api/v1/tasks/batch:
+    post:
+      tags:
+      - Remediation Tasks
+      operationId: createTasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateTaskRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+  /api/v1/reports/job/{jobId}/summary:
+    post:
+      tags:
+      - Reports
+      operationId: uploadSummaryReport
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/v1/reports/job/{jobId}/spec:
+    post:
+      tags:
+      - Reports
+      operationId: uploadSpecification
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+              - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/v1/reports/job/{jobId}/agent/{agentType}:
+    post:
+      tags:
+      - Reports
+      operationId: uploadAgentReport
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: agentType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/v1/projects/{teamId}:
+    post:
+      tags:
+      - Projects
+      operationId: createProject
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+  /api/v1/personas:
+    post:
+      tags:
+      - Personas
+      operationId: createPersona
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonaRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/jobs:
+    post:
+      tags:
+      - QA Jobs
+      operationId: createJob
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /api/v1/jobs/{jobId}/investigation:
+    get:
+      tags:
+      - QA Jobs
+      operationId: getInvestigation
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BugInvestigationResponse'
+    post:
+      tags:
+      - QA Jobs
+      operationId: createInvestigation
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBugInvestigationRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BugInvestigationResponse'
+  /api/v1/jobs/{jobId}/agents:
+    get:
+      tags:
+      - QA Jobs
+      operationId: getAgentRuns
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentRunResponse'
+    post:
+      tags:
+      - QA Jobs
+      operationId: createAgentRun
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRunRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AgentRunResponse'
+  /api/v1/jobs/{jobId}/agents/batch:
+    post:
+      tags:
+      - QA Jobs
+      operationId: createAgentRunsBatch
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                enum:
+                - SECURITY
+                - CODE_QUALITY
+                - BUILD_HEALTH
+                - COMPLETENESS
+                - API_CONTRACT
+                - TEST_COVERAGE
+                - UI_UX
+                - DOCUMENTATION
+                - DATABASE
+                - PERFORMANCE
+                - DEPENDENCY
+                - ARCHITECTURE
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentRunResponse'
+  /api/v1/integrations/jira/{teamId}:
+    get:
+      tags:
+      - Integrations
+      operationId: getJiraConnections
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JiraConnectionResponse'
+    post:
+      tags:
+      - Integrations
+      operationId: createJiraConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJiraConnectionRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JiraConnectionResponse'
+  /api/v1/integrations/github/{teamId}:
+    get:
+      tags:
+      - Integrations
+      operationId: getGitHubConnections
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitHubConnectionResponse'
+    post:
+      tags:
+      - Integrations
+      operationId: createGitHubConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGitHubConnectionRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GitHubConnectionResponse'
+  /api/v1/health-monitor/snapshots:
+    post:
+      tags:
+      - Health Monitor
+      operationId: createSnapshot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHealthSnapshotRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HealthSnapshotResponse'
+  /api/v1/health-monitor/schedules:
+    post:
+      tags:
+      - Health Monitor
+      operationId: createSchedule
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHealthScheduleRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HealthScheduleResponse'
+  /api/v1/findings:
+    post:
+      tags:
+      - Findings
+      operationId: createFinding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFindingRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FindingResponse'
+  /api/v1/findings/batch:
+    post:
+      tags:
+      - Findings
+      operationId: createFindings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateFindingRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingResponse'
+  /api/v1/directives:
+    post:
+      tags:
+      - Directives
+      operationId: createDirective
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectiveRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DirectiveResponse'
+  /api/v1/directives/assign:
+    post:
+      tags:
+      - Directives
+      operationId: assignToProject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignDirectiveRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectDirectiveResponse'
+  /api/v1/dependencies/vulnerabilities:
+    post:
+      tags:
+      - Dependencies
+      operationId: addVulnerability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVulnerabilityRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/dependencies/vulnerabilities/batch:
+    post:
+      tags:
+      - Dependencies
+      operationId: addVulnerabilities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateVulnerabilityRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/dependencies/scans:
+    post:
+      tags:
+      - Dependencies
+      operationId: createScan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDependencyScanRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DependencyScanResponse'
+  /api/v1/compliance/specs:
+    post:
+      tags:
+      - Compliance
+      operationId: createSpecification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpecificationRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SpecificationResponse'
+  /api/v1/compliance/items:
+    post:
+      tags:
+      - Compliance
+      operationId: createComplianceItem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComplianceItemRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ComplianceItemResponse'
+  /api/v1/compliance/items/batch:
+    post:
+      tags:
+      - Compliance
+      operationId: createComplianceItems
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateComplianceItemRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceItemResponse'
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Authentication
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Authentication
+      operationId: refresh
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Authentication
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/change-password:
+    post:
+      tags:
+      - Authentication
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+  /api/v1/users/search:
+    get:
+      tags:
+      - Users
+      operationId: searchUsers
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+  /api/v1/users/me:
+    get:
+      tags:
+      - Users
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /api/v1/tech-debt/{itemId}:
+    get:
+      tags:
+      - Tech Debt
+      operationId: getTechDebtItem
+      parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TechDebtItemResponse'
+    delete:
+      tags:
+      - Tech Debt
+      operationId: deleteTechDebtItem
+      parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/tech-debt/project/{projectId}:
+    get:
+      tags:
+      - Tech Debt
+      operationId: getTechDebtForProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/tech-debt/project/{projectId}/summary:
+    get:
+      tags:
+      - Tech Debt
+      operationId: getDebtSummary
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/v1/tech-debt/project/{projectId}/status/{status}:
+    get:
+      tags:
+      - Tech Debt
+      operationId: getTechDebtByStatus
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - IDENTIFIED
+          - PLANNED
+          - IN_PROGRESS
+          - RESOLVED
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/tech-debt/project/{projectId}/category/{category}:
+    get:
+      tags:
+      - Tech Debt
+      operationId: getTechDebtByCategory
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: category
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - CODE
+          - TEST
+          - DEPENDENCY
+          - DOCUMENTATION
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TechDebtItemResponse'
+  /api/v1/teams/{teamId}/members:
+    get:
+      tags:
+      - Teams
+      operationId: getTeamMembers
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMemberResponse'
+  /api/v1/tasks/job/{jobId}:
+    get:
+      tags:
+      - Remediation Tasks
+      operationId: getTasksForJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+  /api/v1/tasks/assigned-to-me:
+    get:
+      tags:
+      - Remediation Tasks
+      operationId: getAssignedTasks
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+  /api/v1/reports/spec/download:
+    get:
+      tags:
+      - Reports
+      operationId: downloadSpecification
+      parameters:
+      - name: s3Key
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: byte
+  /api/v1/reports/download:
+    get:
+      tags:
+      - Reports
+      operationId: downloadReport
+      parameters:
+      - name: s3Key
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /api/v1/projects/team/{teamId}:
+    get:
+      tags:
+      - Projects
+      operationId: getProjects
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: includeArchived
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectResponse'
+  /api/v1/personas/team/{teamId}:
+    get:
+      tags:
+      - Personas
+      operationId: getPersonasForTeam
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/personas/team/{teamId}/default/{agentType}:
+    get:
+      tags:
+      - Personas
+      operationId: getDefaultPersona
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: agentType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/personas/team/{teamId}/agent/{agentType}:
+    get:
+      tags:
+      - Personas
+      operationId: getPersonasByAgentType
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: agentType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/personas/system:
+    get:
+      tags:
+      - Personas
+      operationId: getSystemPersonas
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/personas/mine:
+    get:
+      tags:
+      - Personas
+      operationId: getMyPersonas
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonaResponse'
+  /api/v1/metrics/team/{teamId}:
+    get:
+      tags:
+      - Metrics
+      operationId: getTeamMetrics
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TeamMetricsResponse'
+  /api/v1/metrics/project/{projectId}:
+    get:
+      tags:
+      - Metrics
+      operationId: getProjectMetrics
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProjectMetricsResponse'
+  /api/v1/metrics/project/{projectId}/trend:
+    get:
+      tags:
+      - Metrics
+      operationId: getHealthTrend
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 30
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthSnapshotResponse'
+  /api/v1/jobs/project/{projectId}:
+    get:
+      tags:
+      - QA Jobs
+      operationId: getJobsForProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageResponseJobSummaryResponse'
+  /api/v1/jobs/mine:
+    get:
+      tags:
+      - QA Jobs
+      operationId: getMyJobs
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobSummaryResponse'
+  /api/v1/integrations/jira/{teamId}/{connectionId}:
+    get:
+      tags:
+      - Integrations
+      operationId: getJiraConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: connectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JiraConnectionResponse'
+    delete:
+      tags:
+      - Integrations
+      operationId: deleteJiraConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: connectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/integrations/github/{teamId}/{connectionId}:
+    get:
+      tags:
+      - Integrations
+      operationId: getGitHubConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: connectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GitHubConnectionResponse'
+    delete:
+      tags:
+      - Integrations
+      operationId: deleteGitHubConnection
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: connectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/health:
+    get:
+      tags:
+      - Health
+      operationId: health
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/v1/health-monitor/snapshots/project/{projectId}:
+    get:
+      tags:
+      - Health Monitor
+      operationId: getSnapshots
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageResponseHealthSnapshotResponse'
+  /api/v1/health-monitor/snapshots/project/{projectId}/trend:
+    get:
+      tags:
+      - Health Monitor
+      operationId: getHealthTrend_1
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 30
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthSnapshotResponse'
+  /api/v1/health-monitor/snapshots/project/{projectId}/latest:
+    get:
+      tags:
+      - Health Monitor
+      operationId: getLatestSnapshot
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HealthSnapshotResponse'
+  /api/v1/health-monitor/schedules/project/{projectId}:
+    get:
+      tags:
+      - Health Monitor
+      operationId: getSchedulesForProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthScheduleResponse'
+  /api/v1/findings/{findingId}:
+    get:
+      tags:
+      - Findings
+      operationId: getFinding
+      parameters:
+      - name: findingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FindingResponse'
+  /api/v1/findings/job/{jobId}:
+    get:
+      tags:
+      - Findings
+      operationId: getFindingsForJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageResponseFindingResponse'
+  /api/v1/findings/job/{jobId}/status/{status}:
+    get:
+      tags:
+      - Findings
+      operationId: getFindingsByStatus
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - FALSE_POSITIVE
+          - FIXED
+          - WONT_FIX
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingResponse'
+  /api/v1/findings/job/{jobId}/severity/{severity}:
+    get:
+      tags:
+      - Findings
+      operationId: getFindingsBySeverity
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: severity
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingResponse'
+  /api/v1/findings/job/{jobId}/counts:
+    get:
+      tags:
+      - Findings
+      operationId: getSeverityCounts
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int64
+  /api/v1/findings/job/{jobId}/agent/{agentType}:
+    get:
+      tags:
+      - Findings
+      operationId: getFindingsByAgent
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: agentType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingResponse'
+  /api/v1/directives/team/{teamId}:
+    get:
+      tags:
+      - Directives
+      operationId: getDirectivesForTeam
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirectiveResponse'
+  /api/v1/directives/project/{projectId}:
+    get:
+      tags:
+      - Directives
+      operationId: getDirectivesForProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirectiveResponse'
+  /api/v1/directives/project/{projectId}/enabled:
+    get:
+      tags:
+      - Directives
+      operationId: getEnabledDirectives
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirectiveResponse'
+  /api/v1/directives/project/{projectId}/assignments:
+    get:
+      tags:
+      - Directives
+      operationId: getProjectDirectives
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectDirectiveResponse'
+  /api/v1/dependencies/vulnerabilities/scan/{scanId}:
+    get:
+      tags:
+      - Dependencies
+      operationId: getVulnerabilities
+      parameters:
+      - name: scanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/dependencies/vulnerabilities/scan/{scanId}/severity/{severity}:
+    get:
+      tags:
+      - Dependencies
+      operationId: getVulnerabilitiesBySeverity
+      parameters:
+      - name: scanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: severity
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/dependencies/vulnerabilities/scan/{scanId}/open:
+    get:
+      tags:
+      - Dependencies
+      operationId: getOpenVulnerabilities
+      parameters:
+      - name: scanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VulnerabilityResponse'
+  /api/v1/dependencies/scans/{scanId}:
+    get:
+      tags:
+      - Dependencies
+      operationId: getScan
+      parameters:
+      - name: scanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DependencyScanResponse'
+  /api/v1/dependencies/scans/project/{projectId}:
+    get:
+      tags:
+      - Dependencies
+      operationId: getScansForProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DependencyScanResponse'
+  /api/v1/dependencies/scans/project/{projectId}/latest:
+    get:
+      tags:
+      - Dependencies
+      operationId: getLatestScan
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DependencyScanResponse'
+  /api/v1/compliance/summary/job/{jobId}:
+    get:
+      tags:
+      - Compliance
+      operationId: getComplianceSummary
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/v1/compliance/specs/job/{jobId}:
+    get:
+      tags:
+      - Compliance
+      operationId: getSpecificationsForJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SpecificationResponse'
+  /api/v1/compliance/items/job/{jobId}:
+    get:
+      tags:
+      - Compliance
+      operationId: getComplianceItemsForJob
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceItemResponse'
+  /api/v1/compliance/items/job/{jobId}/status/{status}:
+    get:
+      tags:
+      - Compliance
+      operationId: getComplianceItemsByStatus
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - MET
+          - PARTIAL
+          - MISSING
+          - NOT_APPLICABLE
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceItemResponse'
+  /api/v1/admin/users:
+    get:
+      tags:
+      - Admin
+      operationId: getAllUsers
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageUserResponse'
+  /api/v1/admin/usage:
+    get:
+      tags:
+      - Admin
+      operationId: getUsageStats
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/v1/admin/settings/{key}:
+    get:
+      tags:
+      - Admin
+      operationId: getSystemSetting
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+  /api/v1/admin/audit-log/user/{userId}:
+    get:
+      tags:
+      - Admin
+      operationId: getUserAuditLog
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageAuditLogResponse'
+  /api/v1/admin/audit-log/team/{teamId}:
+    get:
+      tags:
+      - Admin
+      operationId: getTeamAuditLog
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PageAuditLogResponse'
+  /api/v1/teams/{teamId}/members/{userId}:
+    delete:
+      tags:
+      - Teams
+      operationId: removeMember
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/teams/{teamId}/invitations/{invitationId}:
+    delete:
+      tags:
+      - Teams
+      operationId: cancelInvitation
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+  /api/v1/directives/project/{projectId}/directive/{directiveId}:
+    delete:
+      tags:
+      - Directives
+      operationId: removeFromProject
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: directiveId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    UpdateUserRequest:
+      type: object
+      properties:
+        displayName:
+          maxLength: 100
+          minLength: 0
+          type: string
+        avatarUrl:
+          maxLength: 500
+          minLength: 0
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+        isActive:
+          type: boolean
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    UpdateTechDebtStatusRequest:
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - IDENTIFIED
+          - PLANNED
+          - IN_PROGRESS
+          - RESOLVED
+        resolvedJobId:
+          type: string
+          format: uuid
+    TechDebtItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - CODE
+          - TEST
+          - DEPENDENCY
+          - DOCUMENTATION
+        title:
+          type: string
+        description:
+          type: string
+        filePath:
+          type: string
+        effortEstimate:
+          type: string
+          enum:
+          - S
+          - M
+          - L
+          - XL
+        businessImpact:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        status:
+          type: string
+          enum:
+          - IDENTIFIED
+          - PLANNED
+          - IN_PROGRESS
+          - RESOLVED
+        firstDetectedJobId:
+          type: string
+          format: uuid
+        resolvedJobId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateTeamRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        description:
+          type: string
+        teamsWebhookUrl:
+          maxLength: 500
+          minLength: 0
+          type: string
+    TeamResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        ownerName:
+          type: string
+        teamsWebhookUrl:
+          type: string
+        memberCount:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateMemberRoleRequest:
+      required:
+      - role
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
+    TeamMemberResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
+        joinedAt:
+          type: string
+          format: date-time
+    UpdateTaskRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ASSIGNED
+          - EXPORTED
+          - JIRA_CREATED
+          - COMPLETED
+        assignedTo:
+          type: string
+          format: uuid
+        jiraKey:
+          type: string
+    TaskResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        taskNumber:
+          type: integer
+          format: int32
+        title:
+          type: string
+        description:
+          type: string
+        promptMd:
+          type: string
+        promptS3Key:
+          type: string
+        findingIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        priority:
+          type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ASSIGNED
+          - EXPORTED
+          - JIRA_CREATED
+          - COMPLETED
+        assignedTo:
+          type: string
+          format: uuid
+        assignedToName:
+          type: string
+        jiraKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 200
+          minLength: 0
+          type: string
+        description:
+          type: string
+        githubConnectionId:
+          type: string
+          format: uuid
+        repoUrl:
+          type: string
+        repoFullName:
+          type: string
+        defaultBranch:
+          type: string
+        jiraConnectionId:
+          type: string
+          format: uuid
+        jiraProjectKey:
+          type: string
+        jiraDefaultIssueType:
+          type: string
+        jiraLabels:
+          type: array
+          items:
+            type: string
+        jiraComponent:
+          type: string
+        techStack:
+          type: string
+        isArchived:
+          type: boolean
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        githubConnectionId:
+          type: string
+          format: uuid
+        repoUrl:
+          type: string
+        repoFullName:
+          type: string
+        defaultBranch:
+          type: string
+        jiraConnectionId:
+          type: string
+          format: uuid
+        jiraProjectKey:
+          type: string
+        jiraDefaultIssueType:
+          type: string
+        jiraLabels:
+          type: array
+          items:
+            type: string
+        jiraComponent:
+          type: string
+        techStack:
+          type: string
+        healthScore:
+          type: integer
+          format: int32
+        lastAuditAt:
+          type: string
+          format: date-time
+        isArchived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpdatePersonaRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        description:
+          type: string
+        contentMd:
+          type: string
+        isDefault:
+          type: boolean
+    PersonaResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        description:
+          type: string
+        contentMd:
+          type: string
+        scope:
+          type: string
+          enum:
+          - SYSTEM
+          - TEAM
+          - USER
+        teamId:
+          type: string
+          format: uuid
+        createdBy:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+        isDefault:
+          type: boolean
+        version:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateJobRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+          - CANCELLED
+        summaryMd:
+          type: string
+        overallResult:
+          type: string
+          enum:
+          - PASS
+          - WARN
+          - FAIL
+        healthScore:
+          type: integer
+          format: int32
+        totalFindings:
+          type: integer
+          format: int32
+        criticalCount:
+          type: integer
+          format: int32
+        highCount:
+          type: integer
+          format: int32
+        mediumCount:
+          type: integer
+          format: int32
+        lowCount:
+          type: integer
+          format: int32
+        completedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+    JobResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        projectName:
+          type: string
+        mode:
+          type: string
+          enum:
+          - AUDIT
+          - COMPLIANCE
+          - BUG_INVESTIGATE
+          - REMEDIATE
+          - TECH_DEBT
+          - DEPENDENCY
+          - HEALTH_MONITOR
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+          - CANCELLED
+        name:
+          type: string
+        branch:
+          type: string
+        configJson:
+          type: string
+        summaryMd:
+          type: string
+        overallResult:
+          type: string
+          enum:
+          - PASS
+          - WARN
+          - FAIL
+        healthScore:
+          type: integer
+          format: int32
+        totalFindings:
+          type: integer
+          format: int32
+        criticalCount:
+          type: integer
+          format: int32
+        highCount:
+          type: integer
+          format: int32
+        mediumCount:
+          type: integer
+          format: int32
+        lowCount:
+          type: integer
+          format: int32
+        jiraTicketKey:
+          type: string
+        startedBy:
+          type: string
+          format: uuid
+        startedByName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    UpdateBugInvestigationRequest:
+      type: object
+      properties:
+        rcaMd:
+          type: string
+        impactAssessmentMd:
+          type: string
+        rcaS3Key:
+          type: string
+        rcaPostedToJira:
+          type: boolean
+        fixTasksCreatedInJira:
+          type: boolean
+    BugInvestigationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        jiraKey:
+          type: string
+        jiraSummary:
+          type: string
+        jiraDescription:
+          type: string
+        additionalContext:
+          type: string
+        rcaMd:
+          type: string
+        impactAssessmentMd:
+          type: string
+        rcaS3Key:
+          type: string
+        rcaPostedToJira:
+          type: boolean
+        fixTasksCreatedInJira:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    UpdateAgentRunRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        result:
+          type: string
+          enum:
+          - PASS
+          - WARN
+          - FAIL
+        reportS3Key:
+          type: string
+        score:
+          type: integer
+          format: int32
+        findingsCount:
+          type: integer
+          format: int32
+        criticalCount:
+          type: integer
+          format: int32
+        highCount:
+          type: integer
+          format: int32
+        completedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+    AgentRunResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        result:
+          type: string
+          enum:
+          - PASS
+          - WARN
+          - FAIL
+        reportS3Key:
+          type: string
+        score:
+          type: integer
+          format: int32
+        findingsCount:
+          type: integer
+          format: int32
+        criticalCount:
+          type: integer
+          format: int32
+        highCount:
+          type: integer
+          format: int32
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+    HealthScheduleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        scheduleType:
+          type: string
+          enum:
+          - DAILY
+          - WEEKLY
+          - ON_COMMIT
+        cronExpression:
+          type: string
+        agentTypes:
+          type: array
+          items:
+            type: string
+            enum:
+            - SECURITY
+            - CODE_QUALITY
+            - BUILD_HEALTH
+            - COMPLETENESS
+            - API_CONTRACT
+            - TEST_COVERAGE
+            - UI_UX
+            - DOCUMENTATION
+            - DATABASE
+            - PERFORMANCE
+            - DEPENDENCY
+            - ARCHITECTURE
+        isActive:
+          type: boolean
+        lastRunAt:
+          type: string
+          format: date-time
+        nextRunAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    UpdateFindingStatusRequest:
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - FALSE_POSITIVE
+          - FIXED
+          - WONT_FIX
+    FindingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        severity:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+        title:
+          type: string
+        description:
+          type: string
+        filePath:
+          type: string
+        lineNumber:
+          type: integer
+          format: int32
+        recommendation:
+          type: string
+        evidence:
+          type: string
+        effortEstimate:
+          type: string
+          enum:
+          - S
+          - M
+          - L
+          - XL
+        debtCategory:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - CODE
+          - TEST
+          - DEPENDENCY
+          - DOCUMENTATION
+        status:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - FALSE_POSITIVE
+          - FIXED
+          - WONT_FIX
+        statusChangedBy:
+          type: string
+          format: uuid
+        statusChangedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    BulkUpdateFindingsRequest:
+      required:
+      - findingIds
+      - status
+      type: object
+      properties:
+        findingIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - FALSE_POSITIVE
+          - FIXED
+          - WONT_FIX
+    UpdateDirectiveRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 200
+          minLength: 0
+          type: string
+        description:
+          type: string
+        contentMd:
+          type: string
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - STANDARDS
+          - CONVENTIONS
+          - CONTEXT
+          - OTHER
+    DirectiveResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        contentMd:
+          type: string
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - STANDARDS
+          - CONVENTIONS
+          - CONTEXT
+          - OTHER
+        scope:
+          type: string
+          enum:
+          - TEAM
+          - PROJECT
+          - USER
+        teamId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        createdBy:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+        version:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectDirectiveResponse:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        directiveId:
+          type: string
+          format: uuid
+        directiveName:
+          type: string
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - STANDARDS
+          - CONVENTIONS
+          - CONTEXT
+          - OTHER
+        enabled:
+          type: boolean
+    VulnerabilityResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scanId:
+          type: string
+          format: uuid
+        dependencyName:
+          type: string
+        currentVersion:
+          type: string
+        fixedVersion:
+          type: string
+        cveId:
+          type: string
+        severity:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - OPEN
+          - UPDATING
+          - SUPPRESSED
+          - RESOLVED
+        createdAt:
+          type: string
+          format: date-time
+    AdminUpdateUserRequest:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+    UpdateSystemSettingRequest:
+      required:
+      - key
+      - value
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    SystemSettingResponse:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        updatedBy:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
+    CreateTechDebtItemRequest:
+      required:
+      - category
+      - projectId
+      - title
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - CODE
+          - TEST
+          - DEPENDENCY
+          - DOCUMENTATION
+        title:
+          maxLength: 500
+          minLength: 0
+          type: string
+        description:
+          type: string
+        filePath:
+          type: string
+        effortEstimate:
+          type: string
+          enum:
+          - S
+          - M
+          - L
+          - XL
+        businessImpact:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        firstDetectedJobId:
+          type: string
+          format: uuid
+    CreateTeamRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        description:
+          type: string
+        teamsWebhookUrl:
+          maxLength: 500
+          minLength: 0
+          type: string
+    InviteMemberRequest:
+      required:
+      - email
+      - role
+      type: object
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
+    InvitationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - EXPIRED
+        invitedByName:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    CreateTaskRequest:
+      required:
+      - jobId
+      - taskNumber
+      - title
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        taskNumber:
+          type: integer
+          format: int32
+        title:
+          maxLength: 500
+          minLength: 0
+          type: string
+        description:
+          type: string
+        promptMd:
+          type: string
+        promptS3Key:
+          type: string
+        findingIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        priority:
+          type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+    CreateProjectRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 200
+          minLength: 0
+          type: string
+        description:
+          type: string
+        githubConnectionId:
+          type: string
+          format: uuid
+        repoUrl:
+          type: string
+        repoFullName:
+          type: string
+        defaultBranch:
+          type: string
+        jiraConnectionId:
+          type: string
+          format: uuid
+        jiraProjectKey:
+          type: string
+        jiraDefaultIssueType:
+          type: string
+        jiraLabels:
+          type: array
+          items:
+            type: string
+        jiraComponent:
+          type: string
+        techStack:
+          type: string
+    CreatePersonaRequest:
+      required:
+      - contentMd
+      - name
+      - scope
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        description:
+          type: string
+        contentMd:
+          type: string
+        scope:
+          type: string
+          enum:
+          - SYSTEM
+          - TEAM
+          - USER
+        teamId:
+          type: string
+          format: uuid
+        isDefault:
+          type: boolean
+    CreateJobRequest:
+      required:
+      - mode
+      - projectId
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum:
+          - AUDIT
+          - COMPLIANCE
+          - BUG_INVESTIGATE
+          - REMEDIATE
+          - TECH_DEBT
+          - DEPENDENCY
+          - HEALTH_MONITOR
+        name:
+          type: string
+        branch:
+          type: string
+        configJson:
+          type: string
+        jiraTicketKey:
+          type: string
+    CreateBugInvestigationRequest:
+      required:
+      - jobId
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        jiraKey:
+          type: string
+        jiraSummary:
+          type: string
+        jiraDescription:
+          type: string
+        jiraCommentsJson:
+          type: string
+        jiraAttachmentsJson:
+          type: string
+        jiraLinkedIssues:
+          type: string
+        additionalContext:
+          type: string
+    CreateAgentRunRequest:
+      required:
+      - agentType
+      - jobId
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+    CreateJiraConnectionRequest:
+      required:
+      - apiToken
+      - email
+      - instanceUrl
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        instanceUrl:
+          maxLength: 500
+          minLength: 0
+          type: string
+        email:
+          type: string
+        apiToken:
+          type: string
+    JiraConnectionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        instanceUrl:
+          type: string
+        email:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    CreateGitHubConnectionRequest:
+      required:
+      - authType
+      - credentials
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+        authType:
+          type: string
+          enum:
+          - PAT
+          - OAUTH
+          - SSH
+        credentials:
+          type: string
+        githubUsername:
+          type: string
+    GitHubConnectionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        authType:
+          type: string
+          enum:
+          - PAT
+          - OAUTH
+          - SSH
+        githubUsername:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    CreateHealthSnapshotRequest:
+      required:
+      - healthScore
+      - projectId
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        healthScore:
+          type: integer
+          format: int32
+        findingsBySeverity:
+          type: string
+        techDebtScore:
+          type: integer
+          format: int32
+        dependencyScore:
+          type: integer
+          format: int32
+        testCoveragePercent:
+          type: number
+    HealthSnapshotResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        healthScore:
+          type: integer
+          format: int32
+        findingsBySeverity:
+          type: string
+        techDebtScore:
+          type: integer
+          format: int32
+        dependencyScore:
+          type: integer
+          format: int32
+        testCoveragePercent:
+          type: number
+        capturedAt:
+          type: string
+          format: date-time
+    CreateHealthScheduleRequest:
+      required:
+      - agentTypes
+      - projectId
+      - scheduleType
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        scheduleType:
+          type: string
+          enum:
+          - DAILY
+          - WEEKLY
+          - ON_COMMIT
+        cronExpression:
+          type: string
+        agentTypes:
+          type: array
+          items:
+            type: string
+            enum:
+            - SECURITY
+            - CODE_QUALITY
+            - BUILD_HEALTH
+            - COMPLETENESS
+            - API_CONTRACT
+            - TEST_COVERAGE
+            - UI_UX
+            - DOCUMENTATION
+            - DATABASE
+            - PERFORMANCE
+            - DEPENDENCY
+            - ARCHITECTURE
+    CreateFindingRequest:
+      required:
+      - agentType
+      - jobId
+      - severity
+      - title
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        severity:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+        title:
+          maxLength: 500
+          minLength: 0
+          type: string
+        description:
+          type: string
+        filePath:
+          type: string
+        lineNumber:
+          type: integer
+          format: int32
+        recommendation:
+          type: string
+        evidence:
+          type: string
+        effortEstimate:
+          type: string
+          enum:
+          - S
+          - M
+          - L
+          - XL
+        debtCategory:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - CODE
+          - TEST
+          - DEPENDENCY
+          - DOCUMENTATION
+    CreateDirectiveRequest:
+      required:
+      - contentMd
+      - name
+      - scope
+      type: object
+      properties:
+        name:
+          maxLength: 200
+          minLength: 0
+          type: string
+        description:
+          type: string
+        contentMd:
+          type: string
+        category:
+          type: string
+          enum:
+          - ARCHITECTURE
+          - STANDARDS
+          - CONVENTIONS
+          - CONTEXT
+          - OTHER
+        scope:
+          type: string
+          enum:
+          - TEAM
+          - PROJECT
+          - USER
+        teamId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+    AssignDirectiveRequest:
+      required:
+      - directiveId
+      - projectId
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        directiveId:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+    CreateVulnerabilityRequest:
+      required:
+      - dependencyName
+      - scanId
+      - severity
+      type: object
+      properties:
+        scanId:
+          type: string
+          format: uuid
+        dependencyName:
+          type: string
+        currentVersion:
+          type: string
+        fixedVersion:
+          type: string
+        cveId:
+          type: string
+        severity:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+        description:
+          type: string
+    CreateDependencyScanRequest:
+      required:
+      - projectId
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        manifestFile:
+          type: string
+        totalDependencies:
+          type: integer
+          format: int32
+        outdatedCount:
+          type: integer
+          format: int32
+        vulnerableCount:
+          type: integer
+          format: int32
+        scanDataJson:
+          type: string
+    DependencyScanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        manifestFile:
+          type: string
+        totalDependencies:
+          type: integer
+          format: int32
+        outdatedCount:
+          type: integer
+          format: int32
+        vulnerableCount:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+    CreateSpecificationRequest:
+      required:
+      - jobId
+      - name
+      - s3Key
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        name:
+          maxLength: 200
+          minLength: 0
+          type: string
+        specType:
+          type: string
+          enum:
+          - OPENAPI
+          - MARKDOWN
+          - SCREENSHOT
+          - FIGMA
+        s3Key:
+          type: string
+    SpecificationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        specType:
+          type: string
+          enum:
+          - OPENAPI
+          - MARKDOWN
+          - SCREENSHOT
+          - FIGMA
+        s3Key:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    CreateComplianceItemRequest:
+      required:
+      - jobId
+      - requirement
+      - status
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        requirement:
+          type: string
+        specId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - MET
+          - PARTIAL
+          - MISSING
+          - NOT_APPLICABLE
+        evidence:
+          type: string
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        notes:
+          type: string
+    ComplianceItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        requirement:
+          type: string
+        specId:
+          type: string
+          format: uuid
+        specName:
+          type: string
+        status:
+          type: string
+          enum:
+          - MET
+          - PARTIAL
+          - MISSING
+          - NOT_APPLICABLE
+        evidence:
+          type: string
+        agentType:
+          type: string
+          enum:
+          - SECURITY
+          - CODE_QUALITY
+          - BUILD_HEALTH
+          - COMPLETENESS
+          - API_CONTRACT
+          - TEST_COVERAGE
+          - UI_UX
+          - DOCUMENTATION
+          - DATABASE
+          - PERFORMANCE
+          - DEPENDENCY
+          - ARCHITECTURE
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RegisterRequest:
+      required:
+      - displayName
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          maxLength: 2147483647
+          minLength: 8
+          type: string
+        displayName:
+          maxLength: 100
+          minLength: 0
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserResponse'
+    RefreshTokenRequest:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+    LoginRequest:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    ChangePasswordRequest:
+      required:
+      - currentPassword
+      - newPassword
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          maxLength: 2147483647
+          minLength: 8
+          type: string
+    TeamMetricsResponse:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        totalProjects:
+          type: integer
+          format: int32
+        totalJobs:
+          type: integer
+          format: int32
+        totalFindings:
+          type: integer
+          format: int32
+        averageHealthScore:
+          type: number
+          format: double
+        projectsBelowThreshold:
+          type: integer
+          format: int32
+        openCriticalFindings:
+          type: integer
+          format: int32
+    ProjectMetricsResponse:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        projectName:
+          type: string
+        currentHealthScore:
+          type: integer
+          format: int32
+        previousHealthScore:
+          type: integer
+          format: int32
+        totalJobs:
+          type: integer
+          format: int32
+        totalFindings:
+          type: integer
+          format: int32
+        openCritical:
+          type: integer
+          format: int32
+        openHigh:
+          type: integer
+          format: int32
+        techDebtItemCount:
+          type: integer
+          format: int32
+        openVulnerabilities:
+          type: integer
+          format: int32
+        lastAuditAt:
+          type: string
+          format: date-time
+    JobSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectName:
+          type: string
+        mode:
+          type: string
+          enum:
+          - AUDIT
+          - COMPLIANCE
+          - BUG_INVESTIGATE
+          - REMEDIATE
+          - TECH_DEBT
+          - DEPENDENCY
+          - HEALTH_MONITOR
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+          - CANCELLED
+        name:
+          type: string
+        overallResult:
+          type: string
+          enum:
+          - PASS
+          - WARN
+          - FAIL
+        healthScore:
+          type: integer
+          format: int32
+        totalFindings:
+          type: integer
+          format: int32
+        criticalCount:
+          type: integer
+          format: int32
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    PageResponseJobSummaryResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobSummaryResponse'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        isLast:
+          type: boolean
+    PageResponseHealthSnapshotResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthSnapshotResponse'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        isLast:
+          type: boolean
+    PageResponseFindingResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/FindingResponse'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        isLast:
+          type: boolean
+    PageUserResponse:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        first:
+          type: boolean
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortObject'
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        number:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortObject'
+        paged:
+          type: boolean
+        pageNumber:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        unpaged:
+          type: boolean
+        offset:
+          type: integer
+          format: int64
+    SortObject:
+      type: object
+      properties:
+        direction:
+          type: string
+        nullHandling:
+          type: string
+        ascending:
+          type: boolean
+        property:
+          type: string
+        ignoreCase:
+          type: boolean
+    AuditLogResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: string
+          format: uuid
+        userName:
+          type: string
+        teamId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        details:
+          type: string
+        ipAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PageAuditLogResponse:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        first:
+          type: boolean
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortObject'
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
+        number:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
