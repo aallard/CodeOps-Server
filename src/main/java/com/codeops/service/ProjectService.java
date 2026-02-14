@@ -3,6 +3,7 @@ package com.codeops.service;
 import com.codeops.config.AppConstants;
 import com.codeops.dto.request.CreateProjectRequest;
 import com.codeops.dto.request.UpdateProjectRequest;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.ProjectResponse;
 import com.codeops.entity.Project;
 import com.codeops.entity.TeamMember;
@@ -14,6 +15,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +47,7 @@ public class ProjectService {
         }
 
         Project project = Project.builder()
-                .team(teamRepository.getReferenceById(teamId))
+                .team(teamRepository.findById(teamId).orElseThrow(() -> new EntityNotFoundException("Team not found")))
                 .name(request.name())
                 .description(request.description())
                 .repoUrl(request.repoUrl())
@@ -57,14 +60,14 @@ public class ProjectService {
                 .techStack(request.techStack())
                 .healthScore(AppConstants.DEFAULT_HEALTH_SCORE)
                 .isArchived(false)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
 
         if (request.githubConnectionId() != null) {
-            project.setGithubConnection(gitHubConnectionRepository.getReferenceById(request.githubConnectionId()));
+            project.setGithubConnection(gitHubConnectionRepository.findById(request.githubConnectionId()).orElseThrow(() -> new EntityNotFoundException("GitHub connection not found")));
         }
         if (request.jiraConnectionId() != null) {
-            project.setJiraConnection(jiraConnectionRepository.getReferenceById(request.jiraConnectionId()));
+            project.setJiraConnection(jiraConnectionRepository.findById(request.jiraConnectionId()).orElseThrow(() -> new EntityNotFoundException("Jira connection not found")));
         }
 
         project = projectRepository.save(project);
@@ -88,14 +91,16 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectResponse> getAllProjectsForTeam(UUID teamId, boolean includeArchived) {
+    public PageResponse<ProjectResponse> getAllProjectsForTeam(UUID teamId, boolean includeArchived, Pageable pageable) {
         verifyTeamMembership(teamId);
-        List<Project> projects = includeArchived
-                ? projectRepository.findByTeamId(teamId)
-                : projectRepository.findByTeamIdAndIsArchivedFalse(teamId);
-        return projects.stream()
+        Page<Project> page = includeArchived
+                ? projectRepository.findByTeamId(teamId, pageable)
+                : projectRepository.findByTeamIdAndIsArchivedFalse(teamId, pageable);
+        List<ProjectResponse> content = page.getContent().stream()
                 .map(this::mapToProjectResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public ProjectResponse updateProject(UUID projectId, UpdateProjectRequest request) {
@@ -106,13 +111,13 @@ public class ProjectService {
         if (request.name() != null) project.setName(request.name());
         if (request.description() != null) project.setDescription(request.description());
         if (request.githubConnectionId() != null) {
-            project.setGithubConnection(gitHubConnectionRepository.getReferenceById(request.githubConnectionId()));
+            project.setGithubConnection(gitHubConnectionRepository.findById(request.githubConnectionId()).orElseThrow(() -> new EntityNotFoundException("GitHub connection not found")));
         }
         if (request.repoUrl() != null) project.setRepoUrl(request.repoUrl());
         if (request.repoFullName() != null) project.setRepoFullName(request.repoFullName());
         if (request.defaultBranch() != null) project.setDefaultBranch(request.defaultBranch());
         if (request.jiraConnectionId() != null) {
-            project.setJiraConnection(jiraConnectionRepository.getReferenceById(request.jiraConnectionId()));
+            project.setJiraConnection(jiraConnectionRepository.findById(request.jiraConnectionId()).orElseThrow(() -> new EntityNotFoundException("Jira connection not found")));
         }
         if (request.jiraProjectKey() != null) project.setJiraProjectKey(request.jiraProjectKey());
         if (request.jiraDefaultIssueType() != null) project.setJiraDefaultIssueType(request.jiraDefaultIssueType());

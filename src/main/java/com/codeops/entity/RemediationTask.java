@@ -5,8 +5,13 @@ import com.codeops.entity.enums.TaskStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
-@Table(name = "remediation_tasks")
+@Table(name = "remediation_tasks", indexes = {
+        @Index(name = "idx_task_job_id", columnList = "job_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,10 +26,10 @@ public class RemediationTask extends BaseEntity {
     @Column(name = "task_number", nullable = false)
     private Integer taskNumber;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "title", nullable = false, length = 500)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "prompt_md", columnDefinition = "TEXT")
@@ -33,15 +38,22 @@ public class RemediationTask extends BaseEntity {
     @Column(name = "prompt_s3_key", length = 500)
     private String promptS3Key;
 
-    @Column(name = "finding_ids", columnDefinition = "TEXT")
-    private String findingIds;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "remediation_task_findings",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "finding_id")
+    )
+    @Builder.Default
+    private List<Finding> findings = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false)
     private Priority priority;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) default 'PENDING'")
+    @Column(name = "status", columnDefinition = "varchar(20) default 'PENDING'")
     private TaskStatus status = TaskStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -50,4 +62,8 @@ public class RemediationTask extends BaseEntity {
 
     @Column(name = "jira_key", length = 50)
     private String jiraKey;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

@@ -58,10 +58,8 @@ public class MetricsService {
                 .findFirst();
         if (latestCompleted.isPresent()) {
             UUID latestJobId = latestCompleted.get().getId();
-            openCritical = (int) findingRepository.findByJobIdAndSeverity(latestJobId, Severity.CRITICAL).stream()
-                    .filter(f -> f.getStatus() == FindingStatus.OPEN).count();
-            openHigh = (int) findingRepository.findByJobIdAndSeverity(latestJobId, Severity.HIGH).stream()
-                    .filter(f -> f.getStatus() == FindingStatus.OPEN).count();
+            openCritical = (int) findingRepository.countByJobIdAndSeverityAndStatus(latestJobId, Severity.CRITICAL, FindingStatus.OPEN);
+            openHigh = (int) findingRepository.countByJobIdAndSeverityAndStatus(latestJobId, Severity.HIGH, FindingStatus.OPEN);
         }
 
         int techDebtItemCount = (int) techDebtItemRepository.countByProjectIdAndStatus(projectId, DebtStatus.IDENTIFIED)
@@ -71,7 +69,7 @@ public class MetricsService {
         int openVulnerabilities = 0;
         var latestScan = dependencyScanRepository.findFirstByProjectIdOrderByCreatedAtDesc(projectId);
         if (latestScan.isPresent()) {
-            openVulnerabilities = vulnerabilityRepository.findByScanIdAndStatus(latestScan.get().getId(), VulnerabilityStatus.OPEN).size();
+            openVulnerabilities = (int) vulnerabilityRepository.countByScanIdAndStatus(latestScan.get().getId(), VulnerabilityStatus.OPEN);
         }
 
         return new ProjectMetricsResponse(
@@ -99,8 +97,7 @@ public class MetricsService {
                     .filter(j -> j.getStatus() == JobStatus.COMPLETED)
                     .findFirst();
             if (latestCompleted.isPresent()) {
-                openCriticalFindings += (int) findingRepository.findByJobIdAndSeverity(latestCompleted.get().getId(), Severity.CRITICAL).stream()
-                        .filter(f -> f.getStatus() == FindingStatus.OPEN).count();
+                openCriticalFindings += (int) findingRepository.countByJobIdAndSeverityAndStatus(latestCompleted.get().getId(), Severity.CRITICAL, FindingStatus.OPEN);
             }
         }
 

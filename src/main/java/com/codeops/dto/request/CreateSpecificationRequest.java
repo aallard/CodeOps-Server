@@ -11,5 +11,5 @@ public record CreateSpecificationRequest(
         @NotNull UUID jobId,
         @NotBlank @Size(max = 200) String name,
         SpecType specType,
-        @NotBlank String s3Key
+        @NotBlank @Size(max = 1000) String s3Key
 ) {}

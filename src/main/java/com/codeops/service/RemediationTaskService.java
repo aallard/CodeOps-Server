@@ -2,24 +2,27 @@ package com.codeops.service;
 
 import com.codeops.dto.request.CreateTaskRequest;
 import com.codeops.dto.request.UpdateTaskRequest;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.TaskResponse;
+import com.codeops.entity.Finding;
 import com.codeops.entity.RemediationTask;
 import com.codeops.entity.enums.TaskStatus;
+import com.codeops.repository.FindingRepository;
 import com.codeops.repository.QaJobRepository;
 import com.codeops.repository.RemediationTaskRepository;
 import com.codeops.repository.TeamMemberRepository;
 import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,8 +35,8 @@ public class RemediationTaskService {
     private final QaJobRepository qaJobRepository;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final FindingRepository findingRepository;
     private final S3StorageService s3StorageService;
-    private final ObjectMapper objectMapper;
 
     public TaskResponse createTask(CreateTaskRequest request) {
         var job = qaJobRepository.findById(request.jobId())
@@ -47,7 +50,7 @@ public class RemediationTaskService {
                 .description(request.description())
                 .promptMd(request.promptMd())
                 .promptS3Key(request.promptS3Key())
-                .findingIds(serializeFindingIds(request.findingIds()))
+                .findings(resolveFindingIds(request.findingIds()))
                 .priority(request.priority())
                 .status(TaskStatus.PENDING)
                 .build();
@@ -77,7 +80,7 @@ public class RemediationTaskService {
                         .description(request.description())
                         .promptMd(request.promptMd())
                         .promptS3Key(request.promptS3Key())
-                        .findingIds(serializeFindingIds(request.findingIds()))
+                        .findings(resolveFindingIds(request.findingIds()))
                         .priority(request.priority())
                         .status(TaskStatus.PENDING)
                         .build())
@@ -88,13 +91,16 @@ public class RemediationTaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponse> getTasksForJob(UUID jobId) {
+    public PageResponse<TaskResponse> getTasksForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return remediationTaskRepository.findByJobIdOrderByTaskNumberAsc(jobId).stream()
+        Page<RemediationTask> page = remediationTaskRepository.findByJobId(jobId, pageable);
+        List<TaskResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
@@ -106,10 +112,13 @@ public class RemediationTaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponse> getTasksAssignedToUser(UUID userId) {
-        return remediationTaskRepository.findByAssignedToId(userId).stream()
+    public PageResponse<TaskResponse> getTasksAssignedToUser(UUID userId, Pageable pageable) {
+        Page<RemediationTask> page = remediationTaskRepository.findByAssignedToId(userId, pageable);
+        List<TaskResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public TaskResponse updateTask(UUID taskId, UpdateTaskRequest request) {
@@ -119,7 +128,8 @@ public class RemediationTaskService {
 
         if (request.status() != null) task.setStatus(request.status());
         if (request.assignedTo() != null) {
-            task.setAssignedTo(userRepository.getReferenceById(request.assignedTo()));
+            task.setAssignedTo(userRepository.findById(request.assignedTo())
+                    .orElseThrow(() -> new EntityNotFoundException("User not found")));
         }
         if (request.jiraKey() != null) task.setJiraKey(request.jiraKey());
 
@@ -138,6 +148,9 @@ public class RemediationTaskService {
         if (task.getAssignedTo() != null) {
             assignedToName = task.getAssignedTo().getDisplayName();
         }
+        List<UUID> findingIds = task.getFindings().stream()
+                .map(Finding::getId)
+                .toList();
         return new TaskResponse(
                 task.getId(),
                 task.getJob().getId(),
@@ -146,7 +159,7 @@ public class RemediationTaskService {
                 task.getDescription(),
                 task.getPromptMd(),
                 task.getPromptS3Key(),
-                deserializeFindingIds(task.getFindingIds()),
+                findingIds,
                 task.getPriority(),
                 task.getStatus(),
                 task.getAssignedTo() != null ? task.getAssignedTo().getId() : null,
@@ -156,22 +169,9 @@ public class RemediationTaskService {
         );
     }
 
-    private String serializeFindingIds(List<UUID> findingIds) {
-        if (findingIds == null || findingIds.isEmpty()) return null;
-        try {
-            return objectMapper.writeValueAsString(findingIds);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize finding IDs", e);
-        }
-    }
-
-    private List<UUID> deserializeFindingIds(String json) {
-        if (json == null || json.isBlank()) return List.of();
-        try {
-            return objectMapper.readValue(json, new TypeReference<List<UUID>>() {});
-        } catch (JsonProcessingException e) {
-            return List.of();
-        }
+    private List<Finding> resolveFindingIds(List<UUID> findingIds) {
+        if (findingIds == null || findingIds.isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(findingRepository.findAllById(findingIds));
     }
 
     private void verifyTeamMembership(UUID teamId) {

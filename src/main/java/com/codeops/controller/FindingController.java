@@ -9,6 +9,8 @@ import com.codeops.dto.response.PageResponse;
 import com.codeops.entity.enums.AgentType;
 import com.codeops.entity.enums.FindingStatus;
 import com.codeops.entity.enums.Severity;
+import com.codeops.security.SecurityUtils;
+import com.codeops.service.AuditLogService;
 import com.codeops.service.FindingService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,18 +33,23 @@ import java.util.UUID;
 public class FindingController {
 
     private final FindingService findingService;
+    private final AuditLogService auditLogService;
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FindingResponse> createFinding(@Valid @RequestBody CreateFindingRequest request) {
-        return ResponseEntity.status(201).body(findingService.createFinding(request));
+        FindingResponse response = findingService.createFinding(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "FINDING_CREATED", "FINDING", response.id(), null);
+        return ResponseEntity.status(201).body(response);
     }
 
     @PostMapping("/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FindingResponse>> createFindings(
             @Valid @RequestBody List<CreateFindingRequest> requests) {
-        return ResponseEntity.status(201).body(findingService.createFindings(requests));
+        List<FindingResponse> responses = findingService.createFindings(requests);
+        responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "FINDING_CREATED", "FINDING", r.id(), null));
+        return ResponseEntity.status(201).body(responses);
     }
 
     @GetMapping("/{findingId}")
@@ -64,26 +71,38 @@ public class FindingController {
 
     @GetMapping("/job/{jobId}/severity/{severity}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<FindingResponse>> getFindingsBySeverity(
+    public ResponseEntity<PageResponse<FindingResponse>> getFindingsBySeverity(
             @PathVariable UUID jobId,
-            @PathVariable Severity severity) {
-        return ResponseEntity.ok(findingService.getFindingsByJobAndSeverity(jobId, severity));
+            @PathVariable Severity severity,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
+                Sort.by("createdAt").descending());
+        return ResponseEntity.ok(findingService.getFindingsByJobAndSeverity(jobId, severity, pageable));
     }
 
     @GetMapping("/job/{jobId}/agent/{agentType}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<FindingResponse>> getFindingsByAgent(
+    public ResponseEntity<PageResponse<FindingResponse>> getFindingsByAgent(
             @PathVariable UUID jobId,
-            @PathVariable AgentType agentType) {
-        return ResponseEntity.ok(findingService.getFindingsByJobAndAgent(jobId, agentType));
+            @PathVariable AgentType agentType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
+                Sort.by("createdAt").descending());
+        return ResponseEntity.ok(findingService.getFindingsByJobAndAgent(jobId, agentType, pageable));
     }
 
     @GetMapping("/job/{jobId}/status/{status}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<FindingResponse>> getFindingsByStatus(
+    public ResponseEntity<PageResponse<FindingResponse>> getFindingsByStatus(
             @PathVariable UUID jobId,
-            @PathVariable FindingStatus status) {
-        return ResponseEntity.ok(findingService.getFindingsByJobAndStatus(jobId, status));
+            @PathVariable FindingStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
+                Sort.by("createdAt").descending());
+        return ResponseEntity.ok(findingService.getFindingsByJobAndStatus(jobId, status, pageable));
     }
 
     @GetMapping("/job/{jobId}/counts")
@@ -97,13 +116,17 @@ public class FindingController {
     public ResponseEntity<FindingResponse> updateFindingStatus(
             @PathVariable UUID findingId,
             @Valid @RequestBody UpdateFindingStatusRequest request) {
-        return ResponseEntity.ok(findingService.updateFindingStatus(findingId, request));
+        FindingResponse response = findingService.updateFindingStatus(findingId, request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "FINDING_STATUS_UPDATED", "FINDING", findingId, request.status().name());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/bulk-status")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FindingResponse>> bulkUpdateStatus(
             @Valid @RequestBody BulkUpdateFindingsRequest request) {
-        return ResponseEntity.ok(findingService.bulkUpdateFindingStatus(request));
+        List<FindingResponse> responses = findingService.bulkUpdateFindingStatus(request);
+        responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "FINDING_STATUS_UPDATED", "FINDING", r.id(), request.status().name()));
+        return ResponseEntity.ok(responses);
     }
 }

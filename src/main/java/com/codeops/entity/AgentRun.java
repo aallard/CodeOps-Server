@@ -9,7 +9,9 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "agent_runs")
+@Table(name = "agent_runs", indexes = {
+        @Index(name = "idx_agent_run_job_id", columnList = "job_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,16 +28,17 @@ public class AgentRun extends BaseEntity {
     private AgentType agentType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private AgentStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "result")
     private AgentResult result;
 
     @Column(name = "report_s3_key", length = 500)
     private String reportS3Key;
 
-    @Column
+    @Column(name = "score")
     private Integer score;
 
     @Builder.Default

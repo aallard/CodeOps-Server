@@ -8,7 +8,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "tech_debt_items")
+@Table(name = "tech_debt_items", indexes = {
+        @Index(name = "idx_tech_debt_project_id", columnList = "project_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,13 +23,13 @@ public class TechDebtItem extends BaseEntity {
     private Project project;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "category", nullable = false)
     private DebtCategory category;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "title", nullable = false, length = 500)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "file_path", length = 500)
@@ -43,7 +45,7 @@ public class TechDebtItem extends BaseEntity {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) default 'IDENTIFIED'")
+    @Column(name = "status", columnDefinition = "varchar(20) default 'IDENTIFIED'")
     private DebtStatus status = DebtStatus.IDENTIFIED;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -53,4 +55,8 @@ public class TechDebtItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "resolved_job_id", nullable = true)
     private QaJob resolvedJob;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

@@ -37,6 +37,8 @@ public class AuthService {
             throw new IllegalArgumentException("Email already registered");
         }
 
+        validatePasswordStrength(request.password());
+
         User user = User.builder()
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
@@ -106,12 +108,28 @@ public class AuthService {
             throw new IllegalArgumentException("Current password is incorrect");
         }
 
-        if (request.newPassword().length() < AppConstants.MIN_PASSWORD_LENGTH) {
-            throw new IllegalArgumentException("Password must be at least " + AppConstants.MIN_PASSWORD_LENGTH + " characters");
-        }
+        validatePasswordStrength(request.newPassword());
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password.length() < AppConstants.MIN_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("Password must be at least " + AppConstants.MIN_PASSWORD_LENGTH + " characters");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one lowercase letter");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new IllegalArgumentException("Password must contain at least one digit");
+        }
+        if (!password.matches(".*[^A-Za-z0-9].*")) {
+            throw new IllegalArgumentException("Password must contain at least one special character");
+        }
     }
 
     private List<String> getUserRoles(UUID userId) {

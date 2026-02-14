@@ -69,8 +69,12 @@ public class JobController {
 
     @GetMapping("/mine")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<JobSummaryResponse>> getMyJobs() {
-        return ResponseEntity.ok(qaJobService.getJobsByUser(SecurityUtils.getCurrentUserId()));
+    public ResponseEntity<PageResponse<JobSummaryResponse>> getMyJobs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
+                Sort.by("createdAt").descending());
+        return ResponseEntity.ok(qaJobService.getJobsByUser(SecurityUtils.getCurrentUserId(), pageable));
     }
 
     @PutMapping("/{jobId}")
@@ -92,7 +96,9 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> createAgentRun(@PathVariable UUID jobId,
                                                             @Valid @RequestBody CreateAgentRunRequest request) {
-        return ResponseEntity.status(201).body(agentRunService.createAgentRun(request));
+        AgentRunResponse response = agentRunService.createAgentRun(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_CREATED", "AGENT_RUN", response.id(), null);
+        return ResponseEntity.status(201).body(response);
     }
 
     @PostMapping("/{jobId}/agents/batch")
@@ -100,7 +106,9 @@ public class JobController {
     public ResponseEntity<List<AgentRunResponse>> createAgentRunsBatch(
             @PathVariable UUID jobId,
             @RequestBody List<AgentType> agentTypes) {
-        return ResponseEntity.status(201).body(agentRunService.createAgentRuns(jobId, agentTypes));
+        List<AgentRunResponse> responses = agentRunService.createAgentRuns(jobId, agentTypes);
+        responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_CREATED", "AGENT_RUN", r.id(), null));
+        return ResponseEntity.status(201).body(responses);
     }
 
     @GetMapping("/{jobId}/agents")
@@ -113,7 +121,9 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> updateAgentRun(@PathVariable UUID agentRunId,
                                                             @Valid @RequestBody UpdateAgentRunRequest request) {
-        return ResponseEntity.ok(agentRunService.updateAgentRun(agentRunId, request));
+        AgentRunResponse response = agentRunService.updateAgentRun(agentRunId, request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_UPDATED", "AGENT_RUN", agentRunId, null);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{jobId}/investigation")
@@ -127,7 +137,9 @@ public class JobController {
     public ResponseEntity<BugInvestigationResponse> createInvestigation(
             @PathVariable UUID jobId,
             @Valid @RequestBody CreateBugInvestigationRequest request) {
-        return ResponseEntity.status(201).body(bugInvestigationService.createInvestigation(request));
+        BugInvestigationResponse response = bugInvestigationService.createInvestigation(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "INVESTIGATION_CREATED", "BUG_INVESTIGATION", response.id(), null);
+        return ResponseEntity.status(201).body(response);
     }
 
     @PutMapping("/investigations/{investigationId}")
@@ -135,6 +147,8 @@ public class JobController {
     public ResponseEntity<BugInvestigationResponse> updateInvestigation(
             @PathVariable UUID investigationId,
             @Valid @RequestBody UpdateBugInvestigationRequest request) {
-        return ResponseEntity.ok(bugInvestigationService.updateInvestigation(investigationId, request));
+        BugInvestigationResponse response = bugInvestigationService.updateInvestigation(investigationId, request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "INVESTIGATION_UPDATED", "BUG_INVESTIGATION", investigationId, null);
+        return ResponseEntity.ok(response);
     }
 }

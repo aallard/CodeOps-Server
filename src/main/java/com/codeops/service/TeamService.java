@@ -42,7 +42,8 @@ public class TeamService {
 
     public TeamResponse createTeam(CreateTeamRequest request) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        User currentUser = userRepository.getReferenceById(currentUserId);
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         Team team = Team.builder()
                 .name(request.name())
@@ -181,16 +182,16 @@ public class TeamService {
             throw new IllegalArgumentException("User is already a member of this team");
         }
 
-        List<Invitation> pendingInvitations = invitationRepository.findByEmailAndStatus(request.email(), InvitationStatus.PENDING);
-        boolean hasPendingForTeam = pendingInvitations.stream()
-                .anyMatch(inv -> inv.getTeam().getId().equals(teamId));
-        if (hasPendingForTeam) {
+        List<Invitation> pendingForTeam = invitationRepository.findByTeamIdAndEmailAndStatusForUpdate(teamId, request.email(), InvitationStatus.PENDING);
+        if (!pendingForTeam.isEmpty()) {
             throw new IllegalArgumentException("A pending invitation already exists for this email");
         }
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        Team team = teamRepository.getReferenceById(teamId);
-        User invitedBy = userRepository.getReferenceById(currentUserId);
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new EntityNotFoundException("Team not found"));
+        User invitedBy = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         Invitation invitation = Invitation.builder()
                 .team(team)

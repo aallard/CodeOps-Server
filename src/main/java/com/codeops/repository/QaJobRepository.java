@@ -20,6 +20,8 @@ public interface QaJobRepository extends JpaRepository<QaJob, UUID> {
 
     List<QaJob> findByStartedById(UUID userId);
 
+    Page<QaJob> findByStartedById(UUID userId, Pageable pageable);
+
     Page<QaJob> findByProjectId(UUID projectId, Pageable pageable);
 
     long countByProjectIdAndStatus(UUID projectId, JobStatus status);

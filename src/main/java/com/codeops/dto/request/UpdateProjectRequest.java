@@ -7,16 +7,16 @@ import java.util.UUID;
 
 public record UpdateProjectRequest(
         @Size(max = 200) String name,
-        String description,
+        @Size(max = 5000) String description,
         UUID githubConnectionId,
-        String repoUrl,
-        String repoFullName,
-        String defaultBranch,
+        @Size(max = 2000) String repoUrl,
+        @Size(max = 200) String repoFullName,
+        @Size(max = 200) String defaultBranch,
         UUID jiraConnectionId,
-        String jiraProjectKey,
-        String jiraDefaultIssueType,
+        @Size(max = 50) String jiraProjectKey,
+        @Size(max = 200) String jiraDefaultIssueType,
         List<String> jiraLabels,
-        String jiraComponent,
-        String techStack,
+        @Size(max = 200) String jiraComponent,
+        @Size(max = 5000) String techStack,
         Boolean isArchived
 ) {}

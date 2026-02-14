@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "directives")
+@Table(name = "directives", indexes = {
+        @Index(name = "idx_directive_team_id", columnList = "team_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,20 +16,21 @@ import lombok.*;
 @Builder
 public class Directive extends BaseEntity {
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "name", nullable = false, length = 200)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "content_md", nullable = false, columnDefinition = "TEXT")
     private String contentMd;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "category")
     private DirectiveCategory category;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "scope", nullable = false)
     private DirectiveScope scope;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,6 +46,6 @@ public class Directive extends BaseEntity {
     private User createdBy;
 
     @Builder.Default
-    @Column(columnDefinition = "integer default 1")
+    @Column(name = "version", columnDefinition = "integer default 1")
     private Integer version = 1;
 }

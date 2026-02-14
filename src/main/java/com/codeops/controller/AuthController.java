@@ -5,9 +5,12 @@ import com.codeops.dto.request.LoginRequest;
 import com.codeops.dto.request.RefreshTokenRequest;
 import com.codeops.dto.request.RegisterRequest;
 import com.codeops.dto.response.AuthResponse;
+import com.codeops.security.JwtTokenProvider;
 import com.codeops.security.SecurityUtils;
 import com.codeops.service.AuditLogService;
 import com.codeops.service.AuthService;
+import com.codeops.service.TokenBlacklistService;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuditLogService auditLogService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -42,6 +47,18 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        Claims claims = jwtTokenProvider.parseClaims(token);
+        tokenBlacklistService.blacklist(
+                claims.get("jti", String.class),
+                claims.getExpiration().toInstant()
+        );
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/change-password")

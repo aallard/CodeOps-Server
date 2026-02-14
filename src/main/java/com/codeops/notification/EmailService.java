@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.*;
 
+import org.springframework.web.util.HtmlUtils;
+
 import java.util.List;
 import java.util.Map;
 
@@ -51,30 +53,30 @@ public class EmailService {
 
     public void sendInvitationEmail(String toEmail, String teamName, String inviterName, String acceptUrl) {
         String htmlBody = "<h2>Team Invitation</h2>"
-                + "<p>You've been invited to join <strong>" + teamName + "</strong> on CodeOps by " + inviterName + ".</p>"
-                + "<p><a href=\"" + acceptUrl + "\">Click here to accept</a></p>";
+                + "<p>You've been invited to join <strong>" + HtmlUtils.htmlEscape(teamName) + "</strong> on CodeOps by " + HtmlUtils.htmlEscape(inviterName) + ".</p>"
+                + "<p><a href=\"" + HtmlUtils.htmlEscape(acceptUrl) + "\">Click here to accept</a></p>";
         sendEmail(toEmail, "CodeOps — Team Invitation", htmlBody);
     }
 
     public void sendCriticalFindingAlert(String toEmail, String projectName, int criticalCount, String jobUrl) {
         String htmlBody = "<h2>Critical Findings Alert</h2>"
-                + "<p><strong>" + criticalCount + "</strong> critical findings detected in <strong>" + projectName + "</strong>.</p>"
-                + "<p><a href=\"" + jobUrl + "\">Review findings</a></p>";
-        sendEmail(toEmail, "CodeOps — Critical Findings Alert: " + projectName, htmlBody);
+                + "<p><strong>" + criticalCount + "</strong> critical findings detected in <strong>" + HtmlUtils.htmlEscape(projectName) + "</strong>.</p>"
+                + "<p><a href=\"" + HtmlUtils.htmlEscape(jobUrl) + "\">Review findings</a></p>";
+        sendEmail(toEmail, "CodeOps — Critical Findings Alert: " + HtmlUtils.htmlEscape(projectName), htmlBody);
     }
 
     public void sendHealthDigest(String toEmail, String teamName, List<Map<String, Object>> projectSummaries) {
         StringBuilder html = new StringBuilder();
-        html.append("<h2>Weekly Health Digest: ").append(teamName).append("</h2>");
+        html.append("<h2>Weekly Health Digest: ").append(HtmlUtils.htmlEscape(teamName)).append("</h2>");
         html.append("<table border='1' cellpadding='8'><tr><th>Project</th><th>Health Score</th><th>Findings</th></tr>");
         for (Map<String, Object> summary : projectSummaries) {
             html.append("<tr>");
-            html.append("<td>").append(summary.getOrDefault("name", "")).append("</td>");
-            html.append("<td>").append(summary.getOrDefault("healthScore", "")).append("</td>");
-            html.append("<td>").append(summary.getOrDefault("findings", "")).append("</td>");
+            html.append("<td>").append(HtmlUtils.htmlEscape(String.valueOf(summary.getOrDefault("name", "")))).append("</td>");
+            html.append("<td>").append(HtmlUtils.htmlEscape(String.valueOf(summary.getOrDefault("healthScore", "")))).append("</td>");
+            html.append("<td>").append(HtmlUtils.htmlEscape(String.valueOf(summary.getOrDefault("findings", "")))).append("</td>");
             html.append("</tr>");
         }
         html.append("</table>");
-        sendEmail(toEmail, "CodeOps — Weekly Health Digest: " + teamName, html.toString());
+        sendEmail(toEmail, "CodeOps — Weekly Health Digest: " + HtmlUtils.htmlEscape(teamName), html.toString());
     }
 }

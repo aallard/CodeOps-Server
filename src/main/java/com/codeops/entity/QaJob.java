@@ -9,7 +9,10 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "qa_jobs")
+@Table(name = "qa_jobs", indexes = {
+        @Index(name = "idx_job_project_id", columnList = "project_id"),
+        @Index(name = "idx_job_started_by", columnList = "started_by")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,17 +25,17 @@ public class QaJob extends BaseEntity {
     private Project project;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "mode", nullable = false)
     private JobMode mode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private JobStatus status;
 
-    @Column(length = 200)
+    @Column(name = "name", length = 200)
     private String name;
 
-    @Column(length = 100)
+    @Column(name = "branch", length = 100)
     private String branch;
 
     @Column(name = "config_json", columnDefinition = "TEXT")
@@ -80,4 +83,8 @@ public class QaJob extends BaseEntity {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

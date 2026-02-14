@@ -8,7 +8,10 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "invitations")
+@Table(name = "invitations", indexes = {
+        @Index(name = "idx_inv_team_id", columnList = "team_id"),
+        @Index(name = "idx_inv_email", columnList = "email")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,7 +23,7 @@ public class Invitation extends BaseEntity {
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,14 +31,14 @@ public class Invitation extends BaseEntity {
     private User invitedBy;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private TeamRole role;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(name = "token", nullable = false, unique = true, length = 100)
     private String token;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private InvitationStatus status;
 
     @Column(name = "expires_at", nullable = false)

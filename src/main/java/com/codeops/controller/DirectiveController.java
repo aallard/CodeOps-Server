@@ -31,7 +31,7 @@ public class DirectiveController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DirectiveResponse> createDirective(@Valid @RequestBody CreateDirectiveRequest request) {
         DirectiveResponse response = directiveService.createDirective(request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DIRECTIVE_CREATED", "DIRECTIVE", response.id(), null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "DIRECTIVE_CREATED", "DIRECTIVE", response.id(), null);
         return ResponseEntity.status(201).body(response);
     }
 
@@ -58,15 +58,16 @@ public class DirectiveController {
     public ResponseEntity<DirectiveResponse> updateDirective(@PathVariable UUID directiveId,
                                                               @Valid @RequestBody UpdateDirectiveRequest request) {
         DirectiveResponse response = directiveService.updateDirective(directiveId, request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DIRECTIVE_UPDATED", "DIRECTIVE", directiveId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "DIRECTIVE_UPDATED", "DIRECTIVE", directiveId, null);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{directiveId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteDirective(@PathVariable UUID directiveId) {
+        DirectiveResponse directive = directiveService.getDirective(directiveId);
         directiveService.deleteDirective(directiveId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DIRECTIVE_DELETED", "DIRECTIVE", directiveId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_DELETED", "DIRECTIVE", directiveId, null);
         return ResponseEntity.noContent().build();
     }
 
@@ -74,15 +75,17 @@ public class DirectiveController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectDirectiveResponse> assignToProject(@Valid @RequestBody AssignDirectiveRequest request) {
         ProjectDirectiveResponse response = directiveService.assignToProject(request);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DIRECTIVE_ASSIGNED", "DIRECTIVE", request.directiveId(), null);
+        DirectiveResponse directive = directiveService.getDirective(request.directiveId());
+        auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_ASSIGNED", "DIRECTIVE", request.directiveId(), null);
         return ResponseEntity.status(201).body(response);
     }
 
     @DeleteMapping("/project/{projectId}/directive/{directiveId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> removeFromProject(@PathVariable UUID projectId, @PathVariable UUID directiveId) {
+        DirectiveResponse directive = directiveService.getDirective(directiveId);
         directiveService.removeFromProject(projectId, directiveId);
-        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DIRECTIVE_REMOVED", "DIRECTIVE", directiveId, null);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_REMOVED", "DIRECTIVE", directiveId, null);
         return ResponseEntity.noContent().build();
     }
 

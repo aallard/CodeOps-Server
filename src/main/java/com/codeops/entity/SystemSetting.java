@@ -18,7 +18,7 @@ public class SystemSetting {
     @Column(name = "key", length = 100)
     private String settingKey;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "value", nullable = false, columnDefinition = "TEXT")
     private String value;
 
     @ManyToOne(fetch = FetchType.LAZY)

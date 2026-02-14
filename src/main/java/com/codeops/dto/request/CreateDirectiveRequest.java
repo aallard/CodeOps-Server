@@ -10,8 +10,8 @@ import java.util.UUID;
 
 public record CreateDirectiveRequest(
         @NotBlank @Size(max = 200) String name,
-        String description,
-        @NotBlank String contentMd,
+        @Size(max = 5000) String description,
+        @NotBlank @Size(max = 50000) String contentMd,
         DirectiveCategory category,
         @NotNull DirectiveScope scope,
         UUID teamId,

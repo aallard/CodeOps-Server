@@ -2,6 +2,7 @@ package com.codeops.service;
 
 import com.codeops.dto.request.CreateTechDebtItemRequest;
 import com.codeops.dto.request.UpdateTechDebtStatusRequest;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.TechDebtItemResponse;
 import com.codeops.entity.TechDebtItem;
 import com.codeops.entity.TeamMember;
@@ -16,6 +17,8 @@ import com.codeops.entity.enums.DebtCategory;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +52,7 @@ public class TechDebtService {
                 .effortEstimate(request.effortEstimate())
                 .businessImpact(request.businessImpact())
                 .status(DebtStatus.IDENTIFIED)
-                .firstDetectedJob(request.firstDetectedJobId() != null ? qaJobRepository.getReferenceById(request.firstDetectedJobId()) : null)
+                .firstDetectedJob(request.firstDetectedJobId() != null ? qaJobRepository.findById(request.firstDetectedJobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")) : null)
                 .build();
 
         item = techDebtItemRepository.save(item);
@@ -79,7 +82,7 @@ public class TechDebtService {
                         .effortEstimate(request.effortEstimate())
                         .businessImpact(request.businessImpact())
                         .status(DebtStatus.IDENTIFIED)
-                        .firstDetectedJob(request.firstDetectedJobId() != null ? qaJobRepository.getReferenceById(request.firstDetectedJobId()) : null)
+                        .firstDetectedJob(request.firstDetectedJobId() != null ? qaJobRepository.findById(request.firstDetectedJobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")) : null)
                         .build())
                 .toList();
 
@@ -96,33 +99,42 @@ public class TechDebtService {
     }
 
     @Transactional(readOnly = true)
-    public List<TechDebtItemResponse> getTechDebtForProject(UUID projectId) {
+    public PageResponse<TechDebtItemResponse> getTechDebtForProject(UUID projectId, Pageable pageable) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
-        return techDebtItemRepository.findByProjectId(projectId).stream()
+        Page<TechDebtItem> page = techDebtItemRepository.findByProjectId(projectId, pageable);
+        List<TechDebtItemResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<TechDebtItemResponse> getTechDebtByStatus(UUID projectId, DebtStatus status) {
+    public PageResponse<TechDebtItemResponse> getTechDebtByStatus(UUID projectId, DebtStatus status, Pageable pageable) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
-        return techDebtItemRepository.findByProjectIdAndStatus(projectId, status).stream()
+        Page<TechDebtItem> page = techDebtItemRepository.findByProjectIdAndStatus(projectId, status, pageable);
+        List<TechDebtItemResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<TechDebtItemResponse> getTechDebtByCategory(UUID projectId, DebtCategory category) {
+    public PageResponse<TechDebtItemResponse> getTechDebtByCategory(UUID projectId, DebtCategory category, Pageable pageable) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
-        return techDebtItemRepository.findByProjectIdAndCategory(projectId, category).stream()
+        Page<TechDebtItem> page = techDebtItemRepository.findByProjectIdAndCategory(projectId, category, pageable);
+        List<TechDebtItemResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public TechDebtItemResponse updateTechDebtStatus(UUID itemId, UpdateTechDebtStatusRequest request) {
@@ -132,7 +144,7 @@ public class TechDebtService {
 
         item.setStatus(request.status());
         if (request.resolvedJobId() != null) {
-            item.setResolvedJob(qaJobRepository.getReferenceById(request.resolvedJobId()));
+            item.setResolvedJob(qaJobRepository.findById(request.resolvedJobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")));
         }
 
         item = techDebtItemRepository.save(item);

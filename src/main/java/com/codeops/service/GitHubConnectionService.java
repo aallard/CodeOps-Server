@@ -36,13 +36,13 @@ public class GitHubConnectionService {
         String encryptedCredentials = encryptionService.encrypt(request.credentials());
 
         GitHubConnection connection = GitHubConnection.builder()
-                .team(teamRepository.getReferenceById(teamId))
+                .team(teamRepository.findById(teamId).orElseThrow(() -> new EntityNotFoundException("Team not found")))
                 .name(request.name())
                 .authType(request.authType())
                 .encryptedCredentials(encryptedCredentials)
                 .githubUsername(request.githubUsername())
                 .isActive(true)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
         connection = gitHubConnectionRepository.save(connection);
 
@@ -76,6 +76,13 @@ public class GitHubConnectionService {
     public String getDecryptedCredentials(UUID connectionId) {
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID teamId = connection.getTeam().getId();
+        TeamMember member = teamMemberRepository.findByTeamIdAndUserId(teamId, currentUserId)
+                .orElseThrow(() -> new AccessDeniedException("Not a member of this team"));
+        if (member.getRole() != TeamRole.ADMIN && member.getRole() != TeamRole.OWNER) {
+            throw new AccessDeniedException("Only ADMIN or OWNER can access credentials");
+        }
         return encryptionService.decrypt(connection.getEncryptedCredentials());
     }
 

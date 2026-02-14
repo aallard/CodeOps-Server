@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "audit_log")
+@Table(name = "audit_log", indexes = {
+        @Index(name = "idx_audit_user_id", columnList = "user_id"),
+        @Index(name = "idx_audit_team_id", columnList = "team_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,7 +30,7 @@ public class AuditLog {
     @JoinColumn(name = "team_id", nullable = true)
     private Team team;
 
-    @Column(nullable = false, length = 50)
+    @Column(name = "action", nullable = false, length = 50)
     private String action;
 
     @Column(name = "entity_type", length = 30)
@@ -36,7 +39,7 @@ public class AuditLog {
     @Column(name = "entity_id")
     private UUID entityId;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "details", columnDefinition = "TEXT")
     private String details;
 
     @Column(name = "ip_address", length = 45)

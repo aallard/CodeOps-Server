@@ -36,13 +36,13 @@ public class JiraConnectionService {
         String encryptedToken = encryptionService.encrypt(request.apiToken());
 
         JiraConnection connection = JiraConnection.builder()
-                .team(teamRepository.getReferenceById(teamId))
+                .team(teamRepository.findById(teamId).orElseThrow(() -> new EntityNotFoundException("Team not found")))
                 .name(request.name())
                 .instanceUrl(request.instanceUrl())
                 .email(request.email())
                 .encryptedApiToken(encryptedToken)
                 .isActive(true)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
         connection = jiraConnectionRepository.save(connection);
 
@@ -76,12 +76,26 @@ public class JiraConnectionService {
     public String getDecryptedApiToken(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID teamId = connection.getTeam().getId();
+        TeamMember member = teamMemberRepository.findByTeamIdAndUserId(teamId, currentUserId)
+                .orElseThrow(() -> new AccessDeniedException("Not a member of this team"));
+        if (member.getRole() != TeamRole.ADMIN && member.getRole() != TeamRole.OWNER) {
+            throw new AccessDeniedException("Only ADMIN or OWNER can access credentials");
+        }
         return encryptionService.decrypt(connection.getEncryptedApiToken());
     }
 
     public JiraConnectionDetails getConnectionDetails(UUID connectionId) {
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID teamId = connection.getTeam().getId();
+        TeamMember member = teamMemberRepository.findByTeamIdAndUserId(teamId, currentUserId)
+                .orElseThrow(() -> new AccessDeniedException("Not a member of this team"));
+        if (member.getRole() != TeamRole.ADMIN && member.getRole() != TeamRole.OWNER) {
+            throw new AccessDeniedException("Only ADMIN or OWNER can access credentials");
+        }
         String decryptedToken = encryptionService.decrypt(connection.getEncryptedApiToken());
         return new JiraConnectionDetails(connection.getInstanceUrl(), connection.getEmail(), decryptedToken);
     }

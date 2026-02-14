@@ -11,8 +11,8 @@ import java.util.UUID;
 public record CreatePersonaRequest(
         @NotBlank @Size(max = 100) String name,
         AgentType agentType,
-        String description,
-        @NotBlank String contentMd,
+        @Size(max = 5000) String description,
+        @NotBlank @Size(max = 50000) String contentMd,
         @NotNull Scope scope,
         UUID teamId,
         Boolean isDefault

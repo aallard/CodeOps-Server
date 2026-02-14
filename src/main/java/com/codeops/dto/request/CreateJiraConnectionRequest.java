@@ -8,5 +8,5 @@ public record CreateJiraConnectionRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 500) String instanceUrl,
         @NotBlank @Email String email,
-        @NotBlank String apiToken
+        @NotBlank @Size(max = 10000) String apiToken
 ) {}

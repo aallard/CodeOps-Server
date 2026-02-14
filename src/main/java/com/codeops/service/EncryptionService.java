@@ -18,7 +18,7 @@ public class EncryptionService {
 
     private final SecretKey secretKey;
 
-    public EncryptionService(@Value("${codeops.encryption.key:default-dev-encryption-key-32ch}") String key) {
+    public EncryptionService(@Value("${codeops.encryption.key}") String key) {
         try {
             byte[] keyBytes = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
             this.secretKey = new SecretKeySpec(keyBytes, "AES");

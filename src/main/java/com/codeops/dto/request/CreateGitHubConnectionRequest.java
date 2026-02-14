@@ -8,6 +8,6 @@ import jakarta.validation.constraints.Size;
 public record CreateGitHubConnectionRequest(
         @NotBlank @Size(max = 100) String name,
         @NotNull GitHubAuthType authType,
-        @NotBlank String credentials,
-        String githubUsername
+        @NotBlank @Size(max = 10000) String credentials,
+        @Size(max = 200) String githubUsername
 ) {}

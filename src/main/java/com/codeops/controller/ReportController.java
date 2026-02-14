@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -21,6 +22,20 @@ import java.util.UUID;
 public class ReportController {
 
     private final ReportStorageService reportStorageService;
+
+    private static final Pattern SAFE_S3_KEY = Pattern.compile("^[a-zA-Z0-9/_\\-\\.]+$");
+
+    private void validateS3Key(String s3Key) {
+        if (s3Key == null || s3Key.isBlank()) {
+            throw new IllegalArgumentException("S3 key is required");
+        }
+        if (s3Key.contains("..") || s3Key.startsWith("/")) {
+            throw new IllegalArgumentException("Invalid S3 key: path traversal detected");
+        }
+        if (!SAFE_S3_KEY.matcher(s3Key).matches()) {
+            throw new IllegalArgumentException("Invalid S3 key format");
+        }
+    }
 
     @PostMapping("/job/{jobId}/agent/{agentType}")
     @PreAuthorize("isAuthenticated()")
@@ -44,6 +59,7 @@ public class ReportController {
     @GetMapping("/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> downloadReport(@RequestParam String s3Key) {
+        validateS3Key(s3Key);
         String content = reportStorageService.downloadReport(s3Key);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/markdown"))
@@ -63,6 +79,7 @@ public class ReportController {
     @GetMapping("/spec/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadSpecification(@RequestParam String s3Key) {
+        validateS3Key(s3Key);
         byte[] data = reportStorageService.downloadSpecification(s3Key);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)

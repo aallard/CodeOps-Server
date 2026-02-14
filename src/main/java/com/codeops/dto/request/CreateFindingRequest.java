@@ -15,11 +15,11 @@ public record CreateFindingRequest(
         @NotNull AgentType agentType,
         @NotNull Severity severity,
         @NotBlank @Size(max = 500) String title,
-        String description,
-        String filePath,
+        @Size(max = 5000) String description,
+        @Size(max = 1000) String filePath,
         Integer lineNumber,
-        String recommendation,
-        String evidence,
+        @Size(max = 5000) String recommendation,
+        @Size(max = 50000) String evidence,
         Effort effortEstimate,
         DebtCategory debtCategory
 ) {}

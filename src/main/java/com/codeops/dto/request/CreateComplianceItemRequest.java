@@ -4,15 +4,16 @@ import com.codeops.entity.enums.AgentType;
 import com.codeops.entity.enums.ComplianceStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
 public record CreateComplianceItemRequest(
         @NotNull UUID jobId,
-        @NotBlank String requirement,
+        @NotBlank @Size(max = 5000) String requirement,
         UUID specId,
         @NotNull ComplianceStatus status,
-        String evidence,
+        @Size(max = 50000) String evidence,
         AgentType agentType,
-        String notes
+        @Size(max = 5000) String notes
 ) {}

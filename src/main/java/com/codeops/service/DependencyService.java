@@ -3,6 +3,7 @@ package com.codeops.service;
 import com.codeops.dto.request.CreateDependencyScanRequest;
 import com.codeops.dto.request.CreateVulnerabilityRequest;
 import com.codeops.dto.response.DependencyScanResponse;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.VulnerabilityResponse;
 import com.codeops.entity.DependencyScan;
 import com.codeops.entity.DependencyVulnerability;
@@ -12,6 +13,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +40,7 @@ public class DependencyService {
 
         DependencyScan scan = DependencyScan.builder()
                 .project(project)
-                .job(request.jobId() != null ? qaJobRepository.getReferenceById(request.jobId()) : null)
+                .job(request.jobId() != null ? qaJobRepository.findById(request.jobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")) : null)
                 .manifestFile(request.manifestFile())
                 .totalDependencies(request.totalDependencies())
                 .outdatedCount(request.outdatedCount())
@@ -58,13 +61,16 @@ public class DependencyService {
     }
 
     @Transactional(readOnly = true)
-    public List<DependencyScanResponse> getScansForProject(UUID projectId) {
+    public PageResponse<DependencyScanResponse> getScansForProject(UUID projectId, Pageable pageable) {
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
-        return dependencyScanRepository.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
+        Page<DependencyScan> page = dependencyScanRepository.findByProjectId(projectId, pageable);
+        List<DependencyScanResponse> content = page.getContent().stream()
                 .map(this::mapScanToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
@@ -125,27 +131,36 @@ public class DependencyService {
     }
 
     @Transactional(readOnly = true)
-    public List<VulnerabilityResponse> getVulnerabilities(UUID scanId) {
+    public PageResponse<VulnerabilityResponse> getVulnerabilities(UUID scanId, Pageable pageable) {
         DependencyScan scan = dependencyScanRepository.findById(scanId)
                 .orElseThrow(() -> new EntityNotFoundException("Dependency scan not found"));
         verifyTeamMembership(scan.getProject().getTeam().getId());
-        return vulnerabilityRepository.findByScanId(scanId).stream()
+        Page<DependencyVulnerability> page = vulnerabilityRepository.findByScanId(scanId, pageable);
+        List<VulnerabilityResponse> content = page.getContent().stream()
                 .map(this::mapVulnToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<VulnerabilityResponse> getVulnerabilitiesBySeverity(UUID scanId, Severity severity) {
-        return vulnerabilityRepository.findByScanIdAndSeverity(scanId, severity).stream()
+    public PageResponse<VulnerabilityResponse> getVulnerabilitiesBySeverity(UUID scanId, Severity severity, Pageable pageable) {
+        Page<DependencyVulnerability> page = vulnerabilityRepository.findByScanIdAndSeverity(scanId, severity, pageable);
+        List<VulnerabilityResponse> content = page.getContent().stream()
                 .map(this::mapVulnToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<VulnerabilityResponse> getOpenVulnerabilities(UUID scanId) {
-        return vulnerabilityRepository.findByScanIdAndStatus(scanId, VulnerabilityStatus.OPEN).stream()
+    public PageResponse<VulnerabilityResponse> getOpenVulnerabilities(UUID scanId, Pageable pageable) {
+        Page<DependencyVulnerability> page = vulnerabilityRepository.findByScanIdAndStatus(scanId, VulnerabilityStatus.OPEN, pageable);
+        List<VulnerabilityResponse> content = page.getContent().stream()
                 .map(this::mapVulnToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public VulnerabilityResponse updateVulnerabilityStatus(UUID vulnerabilityId, VulnerabilityStatus status) {

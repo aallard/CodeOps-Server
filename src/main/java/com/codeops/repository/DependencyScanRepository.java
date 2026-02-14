@@ -1,6 +1,8 @@
 package com.codeops.repository;
 
 import com.codeops.entity.DependencyScan;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,6 +14,8 @@ import java.util.UUID;
 public interface DependencyScanRepository extends JpaRepository<DependencyScan, UUID> {
 
     List<DependencyScan> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
+
+    Page<DependencyScan> findByProjectId(UUID projectId, Pageable pageable);
 
     Optional<DependencyScan> findFirstByProjectIdOrderByCreatedAtDesc(UUID projectId);
 }

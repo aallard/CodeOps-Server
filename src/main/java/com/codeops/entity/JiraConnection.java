@@ -16,13 +16,13 @@ public class JiraConnection extends BaseEntity {
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "instance_url", nullable = false, length = 500)
     private String instanceUrl;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     @Column(name = "encrypted_api_token", nullable = false, columnDefinition = "TEXT")

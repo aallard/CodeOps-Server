@@ -5,7 +5,10 @@ import lombok.*;
 
 @Entity
 @Table(name = "notification_preferences",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "event_type"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "event_type"}),
+        indexes = {
+                @Index(name = "idx_notif_user_id", columnList = "user_id")
+        })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,6 +28,6 @@ public class NotificationPreference extends BaseEntity {
     private Boolean inApp = true;
 
     @Builder.Default
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(name = "email", nullable = false, columnDefinition = "boolean default false")
     private Boolean email = false;
 }

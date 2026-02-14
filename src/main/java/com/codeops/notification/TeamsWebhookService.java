@@ -1,6 +1,7 @@
 package com.codeops.notification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -8,22 +9,43 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.*;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TeamsWebhookService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public TeamsWebhookService() {
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
+    private void validateWebhookUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            String host = uri.getHost();
+            if (host == null) throw new IllegalArgumentException("Invalid webhook URL");
+
+            InetAddress address = InetAddress.getByName(host);
+            if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()) {
+                throw new IllegalArgumentException("Webhook URL must not point to internal network addresses");
+            }
+
+            String scheme = uri.getScheme();
+            if (!"https".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("Webhook URL must use HTTPS");
+            }
+        } catch (URISyntaxException | UnknownHostException e) {
+            throw new IllegalArgumentException("Invalid webhook URL: " + e.getMessage());
+        }
     }
 
     public void postMessage(String webhookUrl, String title, String subtitle, Map<String, String> facts, String actionUrl) {
         if (webhookUrl == null || webhookUrl.isBlank()) return;
+        validateWebhookUrl(webhookUrl);
 
         try {
             List<Map<String, String>> factsList = new ArrayList<>();

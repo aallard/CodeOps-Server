@@ -16,6 +16,8 @@ codeops:
     refresh-expiration-days: 30
   encryption:
     key: ${ENCRYPTION_KEY}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
   aws:
     s3:
       enabled: true

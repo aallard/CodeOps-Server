@@ -25,5 +25,13 @@ public interface FindingRepository extends JpaRepository<Finding, UUID> {
 
     Page<Finding> findByJobId(UUID jobId, Pageable pageable);
 
+    Page<Finding> findByJobIdAndSeverity(UUID jobId, Severity severity, Pageable pageable);
+
+    Page<Finding> findByJobIdAndAgentType(UUID jobId, AgentType agentType, Pageable pageable);
+
+    Page<Finding> findByJobIdAndStatus(UUID jobId, FindingStatus status, Pageable pageable);
+
     long countByJobIdAndSeverity(UUID jobId, Severity severity);
+
+    long countByJobIdAndSeverityAndStatus(UUID jobId, Severity severity, FindingStatus status);
 }

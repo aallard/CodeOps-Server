@@ -53,7 +53,7 @@ public class QaJobService {
                 .highCount(0)
                 .mediumCount(0)
                 .lowCount(0)
-                .startedBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .startedBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
 
         job = qaJobRepository.save(job);
@@ -83,10 +83,13 @@ public class QaJobService {
     }
 
     @Transactional(readOnly = true)
-    public List<JobSummaryResponse> getJobsByUser(UUID userId) {
-        return qaJobRepository.findByStartedById(userId).stream()
+    public PageResponse<JobSummaryResponse> getJobsByUser(UUID userId, Pageable pageable) {
+        Page<QaJob> page = qaJobRepository.findByStartedById(userId, pageable);
+        List<JobSummaryResponse> content = page.getContent().stream()
                 .map(this::mapToJobSummaryResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public JobResponse updateJob(UUID jobId, UpdateJobRequest request) {

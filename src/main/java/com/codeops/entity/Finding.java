@@ -7,7 +7,10 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "findings")
+@Table(name = "findings", indexes = {
+        @Index(name = "idx_finding_job_id", columnList = "job_id"),
+        @Index(name = "idx_finding_status", columnList = "status")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,13 +27,13 @@ public class Finding extends BaseEntity {
     private AgentType agentType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "severity", nullable = false)
     private Severity severity;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "title", nullable = false, length = 500)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "file_path", length = 500)
@@ -39,10 +42,10 @@ public class Finding extends BaseEntity {
     @Column(name = "line_number")
     private Integer lineNumber;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "recommendation", columnDefinition = "TEXT")
     private String recommendation;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "evidence", columnDefinition = "TEXT")
     private String evidence;
 
     @Enumerated(EnumType.STRING)
@@ -55,7 +58,7 @@ public class Finding extends BaseEntity {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "varchar(20) default 'OPEN'")
+    @Column(name = "status", columnDefinition = "varchar(20) default 'OPEN'")
     private FindingStatus status = FindingStatus.OPEN;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -64,4 +67,8 @@ public class Finding extends BaseEntity {
 
     @Column(name = "status_changed_at")
     private Instant statusChangedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

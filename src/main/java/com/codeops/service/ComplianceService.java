@@ -3,6 +3,7 @@ package com.codeops.service;
 import com.codeops.dto.request.CreateComplianceItemRequest;
 import com.codeops.dto.request.CreateSpecificationRequest;
 import com.codeops.dto.response.ComplianceItemResponse;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.SpecificationResponse;
 import com.codeops.entity.ComplianceItem;
 import com.codeops.entity.Specification;
@@ -14,6 +15,8 @@ import com.codeops.repository.TeamMemberRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,13 +52,16 @@ public class ComplianceService {
     }
 
     @Transactional(readOnly = true)
-    public List<SpecificationResponse> getSpecificationsForJob(UUID jobId) {
+    public PageResponse<SpecificationResponse> getSpecificationsForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return specificationRepository.findByJobId(jobId).stream()
+        Page<Specification> page = specificationRepository.findByJobId(jobId, pageable);
+        List<SpecificationResponse> content = page.getContent().stream()
                 .map(this::mapSpecToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public ComplianceItemResponse createComplianceItem(CreateComplianceItemRequest request) {
@@ -66,7 +72,7 @@ public class ComplianceService {
         ComplianceItem item = ComplianceItem.builder()
                 .job(job)
                 .requirement(request.requirement())
-                .spec(request.specId() != null ? specificationRepository.getReferenceById(request.specId()) : null)
+                .spec(request.specId() != null ? specificationRepository.findById(request.specId()).orElseThrow(() -> new EntityNotFoundException("Specification not found")) : null)
                 .status(request.status())
                 .evidence(request.evidence())
                 .agentType(request.agentType())
@@ -94,7 +100,7 @@ public class ComplianceService {
                 .map(request -> ComplianceItem.builder()
                         .job(job)
                         .requirement(request.requirement())
-                        .spec(request.specId() != null ? specificationRepository.getReferenceById(request.specId()) : null)
+                        .spec(request.specId() != null ? specificationRepository.findById(request.specId()).orElseThrow(() -> new EntityNotFoundException("Specification not found")) : null)
                         .status(request.status())
                         .evidence(request.evidence())
                         .agentType(request.agentType())
@@ -107,23 +113,29 @@ public class ComplianceService {
     }
 
     @Transactional(readOnly = true)
-    public List<ComplianceItemResponse> getComplianceItemsForJob(UUID jobId) {
+    public PageResponse<ComplianceItemResponse> getComplianceItemsForJob(UUID jobId, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return complianceItemRepository.findByJobId(jobId).stream()
+        Page<ComplianceItem> page = complianceItemRepository.findByJobId(jobId, pageable);
+        List<ComplianceItemResponse> content = page.getContent().stream()
                 .map(this::mapItemToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<ComplianceItemResponse> getComplianceItemsByStatus(UUID jobId, ComplianceStatus status) {
+    public PageResponse<ComplianceItemResponse> getComplianceItemsByStatus(UUID jobId, ComplianceStatus status, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return complianceItemRepository.findByJobIdAndStatus(jobId, status).stream()
+        Page<ComplianceItem> page = complianceItemRepository.findByJobIdAndStatus(jobId, status, pageable);
+        List<ComplianceItemResponse> content = page.getContent().stream()
                 .map(this::mapItemToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)

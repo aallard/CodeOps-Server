@@ -3,6 +3,7 @@ package com.codeops.service;
 import com.codeops.config.AppConstants;
 import com.codeops.dto.request.CreatePersonaRequest;
 import com.codeops.dto.request.UpdatePersonaRequest;
+import com.codeops.dto.response.PageResponse;
 import com.codeops.dto.response.PersonaResponse;
 import com.codeops.entity.Persona;
 import com.codeops.entity.TeamMember;
@@ -16,6 +17,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,8 +59,8 @@ public class PersonaService {
                 .description(request.description())
                 .contentMd(request.contentMd())
                 .scope(request.scope())
-                .team(request.teamId() != null ? teamRepository.getReferenceById(request.teamId()) : null)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .team(request.teamId() != null ? teamRepository.findById(request.teamId()).orElseThrow(() -> new EntityNotFoundException("Team not found")) : null)
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .isDefault(request.isDefault() != null ? request.isDefault() : false)
                 .version(1)
                 .build();
@@ -81,11 +84,14 @@ public class PersonaService {
     }
 
     @Transactional(readOnly = true)
-    public List<PersonaResponse> getPersonasForTeam(UUID teamId) {
+    public PageResponse<PersonaResponse> getPersonasForTeam(UUID teamId, Pageable pageable) {
         verifyTeamMembership(teamId);
-        return personaRepository.findByTeamId(teamId).stream()
+        Page<Persona> page = personaRepository.findByTeamId(teamId, pageable);
+        List<PersonaResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)

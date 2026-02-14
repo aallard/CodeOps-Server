@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "specifications")
+@Table(name = "specifications", indexes = {
+        @Index(name = "idx_spec_job_id", columnList = "job_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +23,7 @@ public class Specification extends BaseEntity {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "spec_type")
+    @Column(name = "spec_type", nullable = false)
     private SpecType specType;
 
     @Column(name = "s3_key", nullable = false, length = 500)

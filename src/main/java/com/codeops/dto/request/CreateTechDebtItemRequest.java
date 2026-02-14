@@ -13,8 +13,8 @@ public record CreateTechDebtItemRequest(
         @NotNull UUID projectId,
         @NotNull DebtCategory category,
         @NotBlank @Size(max = 500) String title,
-        String description,
-        String filePath,
+        @Size(max = 5000) String description,
+        @Size(max = 1000) String filePath,
         Effort effortEstimate,
         BusinessImpact businessImpact,
         UUID firstDetectedJobId

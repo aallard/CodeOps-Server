@@ -3,6 +3,8 @@ package com.codeops.repository;
 import com.codeops.entity.Persona;
 import com.codeops.entity.enums.AgentType;
 import com.codeops.entity.enums.Scope;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +16,8 @@ import java.util.UUID;
 public interface PersonaRepository extends JpaRepository<Persona, UUID> {
 
     List<Persona> findByTeamId(UUID teamId);
+
+    Page<Persona> findByTeamId(UUID teamId, Pageable pageable);
 
     List<Persona> findByScope(Scope scope);
 

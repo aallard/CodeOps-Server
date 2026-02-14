@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "compliance_items")
+@Table(name = "compliance_items", indexes = {
+        @Index(name = "idx_compliance_job_id", columnList = "job_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,7 +20,7 @@ public class ComplianceItem extends BaseEntity {
     @JoinColumn(name = "job_id", nullable = false)
     private QaJob job;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "requirement", nullable = false, columnDefinition = "TEXT")
     private String requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -26,16 +28,16 @@ public class ComplianceItem extends BaseEntity {
     private Specification spec;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private ComplianceStatus status;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "evidence", columnDefinition = "TEXT")
     private String evidence;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "agent_type")
     private AgentType agentType;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 }

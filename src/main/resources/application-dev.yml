@@ -22,12 +22,15 @@ spring:
 # JWT
 codeops:
   jwt:
-    secret: dev-secret-key-minimum-32-characters-long-for-hs256
+    secret: ${JWT_SECRET:dev-secret-key-minimum-32-characters-long-for-hs256}
     expiration-hours: 24
     refresh-expiration-days: 30
 
   encryption:
-    key: dev-encryption-key-minimum-32-characters
+    key: dev-only-encryption-key-minimum-32ch
+
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:5173
 
   # AWS (local dev — use localstack or disable)
   aws:

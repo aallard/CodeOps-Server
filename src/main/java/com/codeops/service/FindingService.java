@@ -119,33 +119,42 @@ public class FindingService {
     }
 
     @Transactional(readOnly = true)
-    public List<FindingResponse> getFindingsByJobAndSeverity(UUID jobId, Severity severity) {
+    public PageResponse<FindingResponse> getFindingsByJobAndSeverity(UUID jobId, Severity severity, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return findingRepository.findByJobIdAndSeverity(jobId, severity).stream()
+        Page<Finding> page = findingRepository.findByJobIdAndSeverity(jobId, severity, pageable);
+        List<FindingResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<FindingResponse> getFindingsByJobAndAgent(UUID jobId, AgentType agentType) {
+    public PageResponse<FindingResponse> getFindingsByJobAndAgent(UUID jobId, AgentType agentType, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return findingRepository.findByJobIdAndAgentType(jobId, agentType).stream()
+        Page<Finding> page = findingRepository.findByJobIdAndAgentType(jobId, agentType, pageable);
+        List<FindingResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     @Transactional(readOnly = true)
-    public List<FindingResponse> getFindingsByJobAndStatus(UUID jobId, FindingStatus status) {
+    public PageResponse<FindingResponse> getFindingsByJobAndStatus(UUID jobId, FindingStatus status, Pageable pageable) {
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
-        return findingRepository.findByJobIdAndStatus(jobId, status).stream()
+        Page<Finding> page = findingRepository.findByJobIdAndStatus(jobId, status, pageable);
+        List<FindingResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+        return new PageResponse<>(content, page.getNumber(), page.getSize(),
+                page.getTotalElements(), page.getTotalPages(), page.isLast());
     }
 
     public FindingResponse updateFindingStatus(UUID findingId, UpdateFindingStatusRequest request) {
@@ -154,7 +163,8 @@ public class FindingService {
         verifyTeamMembership(finding.getJob().getProject().getTeam().getId());
 
         finding.setStatus(request.status());
-        finding.setStatusChangedBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()));
+        finding.setStatusChangedBy(userRepository.findById(SecurityUtils.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
         finding.setStatusChangedAt(Instant.now());
 
         finding = findingRepository.save(finding);
@@ -175,7 +185,8 @@ public class FindingService {
 
         verifyTeamMembership(findings.get(0).getJob().getProject().getTeam().getId());
 
-        var currentUser = userRepository.getReferenceById(SecurityUtils.getCurrentUserId());
+        var currentUser = userRepository.findById(SecurityUtils.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
         Instant now = Instant.now();
         findings.forEach(finding -> {
             finding.setStatus(request.status());

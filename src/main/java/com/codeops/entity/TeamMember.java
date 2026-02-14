@@ -9,6 +9,9 @@ import java.time.Instant;
 @Entity
 @Table(name = "team_members", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"team_id", "user_id"})
+}, indexes = {
+        @Index(name = "idx_tm_team_id", columnList = "team_id"),
+        @Index(name = "idx_tm_user_id", columnList = "user_id")
 })
 @Getter
 @Setter
@@ -26,7 +29,7 @@ public class TeamMember extends BaseEntity {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private TeamRole role;
 
     @Column(name = "joined_at", nullable = false)

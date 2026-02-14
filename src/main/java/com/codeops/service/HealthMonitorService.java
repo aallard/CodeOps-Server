@@ -55,7 +55,7 @@ public class HealthMonitorService {
                 .cronExpression(request.cronExpression())
                 .agentTypes(serializeAgentTypes(request.agentTypes()))
                 .isActive(true)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .nextRunAt(calculateNextRun(request.scheduleType(), request.cronExpression()))
                 .build();
 
@@ -75,7 +75,12 @@ public class HealthMonitorService {
 
     @Transactional(readOnly = true)
     public List<HealthScheduleResponse> getActiveSchedules() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        List<UUID> teamIds = teamMemberRepository.findByUserId(currentUserId).stream()
+                .map(member -> member.getTeam().getId())
+                .toList();
         return healthScheduleRepository.findByIsActiveTrue().stream()
+                .filter(schedule -> teamIds.contains(schedule.getProject().getTeam().getId()))
                 .map(this::mapScheduleToResponse)
                 .toList();
     }
@@ -114,7 +119,7 @@ public class HealthMonitorService {
 
         HealthSnapshot snapshot = HealthSnapshot.builder()
                 .project(project)
-                .job(request.jobId() != null ? qaJobRepository.getReferenceById(request.jobId()) : null)
+                .job(request.jobId() != null ? qaJobRepository.findById(request.jobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")) : null)
                 .healthScore(request.healthScore())
                 .findingsBySeverity(request.findingsBySeverity())
                 .techDebtScore(request.techDebtScore())

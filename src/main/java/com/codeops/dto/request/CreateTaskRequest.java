@@ -12,9 +12,9 @@ public record CreateTaskRequest(
         @NotNull UUID jobId,
         @NotNull Integer taskNumber,
         @NotBlank @Size(max = 500) String title,
-        String description,
-        String promptMd,
-        String promptS3Key,
+        @Size(max = 5000) String description,
+        @Size(max = 50000) String promptMd,
+        @Size(max = 1000) String promptS3Key,
         List<UUID> findingIds,
         Priority priority
 ) {}

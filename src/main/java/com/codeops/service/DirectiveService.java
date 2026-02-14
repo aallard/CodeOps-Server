@@ -60,9 +60,9 @@ public class DirectiveService {
                 .contentMd(request.contentMd())
                 .category(request.category())
                 .scope(request.scope())
-                .team(request.teamId() != null ? teamRepository.getReferenceById(request.teamId()) : null)
-                .project(request.projectId() != null ? projectRepository.getReferenceById(request.projectId()) : null)
-                .createdBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                .team(request.teamId() != null ? teamRepository.findById(request.teamId()).orElseThrow(() -> new EntityNotFoundException("Team not found")) : null)
+                .project(request.projectId() != null ? projectRepository.findById(request.projectId()).orElseThrow(() -> new EntityNotFoundException("Project not found")) : null)
+                .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .version(1)
                 .build();
 

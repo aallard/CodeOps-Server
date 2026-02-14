@@ -31,14 +31,23 @@ public class AdminService {
     private final QaJobRepository qaJobRepository;
     private final SystemSettingRepository systemSettingRepository;
 
+    private void verifyCurrentUserIsAdmin() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (!SecurityUtils.isAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException("Admin access required");
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
+        verifyCurrentUserIsAdmin();
         return userRepository.findAll(pageable)
                 .map(this::mapToUserResponse);
     }
 
     @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
+        verifyCurrentUserIsAdmin();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return mapToUserResponse(user);
@@ -67,13 +76,13 @@ public class AdminService {
         if (existing.isPresent()) {
             setting = existing.get();
             setting.setValue(request.value());
-            setting.setUpdatedBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()));
+            setting.setUpdatedBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")));
             setting.setUpdatedAt(Instant.now());
         } else {
             setting = SystemSetting.builder()
                     .settingKey(request.key())
                     .value(request.value())
-                    .updatedBy(userRepository.getReferenceById(SecurityUtils.getCurrentUserId()))
+                    .updatedBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                     .updatedAt(Instant.now())
                     .build();
         }
@@ -90,8 +99,9 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getUsageStats() {
+        verifyCurrentUserIsAdmin();
         long totalUsers = userRepository.count();
-        long activeUsers = userRepository.findAll().stream().filter(User::getIsActive).count();
+        long activeUsers = userRepository.countByIsActiveTrue();
         long totalTeams = teamRepository.count();
         long totalProjects = projectRepository.count();
         long totalJobs = qaJobRepository.count();
