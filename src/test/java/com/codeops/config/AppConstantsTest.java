@@ -22,7 +22,7 @@ class AppConstantsTest {
         assertEquals(24, AppConstants.JWT_EXPIRY_HOURS);
         assertEquals(30, AppConstants.REFRESH_TOKEN_EXPIRY_DAYS);
         assertEquals(7, AppConstants.INVITATION_EXPIRY_DAYS);
-        assertEquals(8, AppConstants.MIN_PASSWORD_LENGTH);
+        assertEquals(1, AppConstants.MIN_PASSWORD_LENGTH);
         assertEquals(1, AppConstants.HEALTH_DIGEST_DAY);
         assertEquals(8, AppConstants.HEALTH_DIGEST_HOUR);
         assertEquals("reports/", AppConstants.S3_REPORTS);

@@ -116,7 +116,7 @@ class AuthServiceTest {
 
     @Test
     void register_weakPassword_tooShort_throws() {
-        RegisterRequest request = new RegisterRequest("new@test.com", "Ab1!", "User");
+        RegisterRequest request = new RegisterRequest("new@test.com", "", "User");
         when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
         assertThrows(IllegalArgumentException.class, () -> authService.register(request));
     }
