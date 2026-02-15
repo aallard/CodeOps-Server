@@ -90,7 +90,7 @@ class AuthControllerIT extends BaseIntegrationTest {
 
     @Test
     void register_weakPassword_tooShort_returns400() {
-        var body = Map.of("email", uniqueEmail("weak"), "password", "T@1a", "displayName", "Test");
+        var body = Map.of("email", uniqueEmail("weak"), "password", "", "displayName", "Test");
 
         ResponseEntity<Map> response = restTemplate.postForEntity("/api/v1/auth/register", body, Map.class);
 

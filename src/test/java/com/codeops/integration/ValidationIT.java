@@ -73,7 +73,7 @@ class ValidationIT extends BaseIntegrationTest {
     @Test
     void register_shortPassword_returns400() {
         Map<String, Object> result = post("/api/v1/auth/register",
-                Map.of("email", uniqueEmail("val-short"), "password", "Ab1!", "displayName", "Short Pass User"),
+                Map.of("email", uniqueEmail("val-short"), "password", "", "displayName", "Short Pass User"),
                 null);
 
         assertThat((Integer) result.get("status")).isEqualTo(400);

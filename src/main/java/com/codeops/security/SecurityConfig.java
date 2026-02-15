@@ -26,8 +26,8 @@ import jakarta.servlet.http.HttpServletResponse;
  *   <li>Authentication endpoints ({@code /api/v1/auth/**}), health, and Swagger UI are publicly accessible</li>
  *   <li>All other {@code /api/**} endpoints require authentication</li>
  *   <li>Security headers include CSP, HSTS, X-Frame-Options DENY, and X-Content-Type-Options</li>
- *   <li>{@link RateLimitFilter} and {@link JwtAuthFilter} are registered before the default
- *       {@link UsernamePasswordAuthenticationFilter}</li>
+ *   <li>{@link RequestCorrelationFilter}, {@link RateLimitFilter}, and {@link JwtAuthFilter}
+ *       are registered before {@link UsernamePasswordAuthenticationFilter} (in that execution order)</li>
  * </ul>
  *
  * @see JwtAuthFilter
@@ -82,9 +82,9 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(31536000)
                         )
                 )
-                .addFilterBefore(requestCorrelationFilter, RateLimitFilter.class)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(requestCorrelationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

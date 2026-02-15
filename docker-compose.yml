@@ -1,3 +1,8 @@
+# CodeOps Server — Local Development Infrastructure
+# Usage: docker compose up -d
+
+name: codeops
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,7 +14,24 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - codeops_data:/var/lib/postgresql/data
+      - codeops-postgres-data:/var/lib/postgresql/data
+    labels:
+      com.codeops.project: "codeops-server"
+      com.codeops.component: "database"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeops -d codeops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - codeops-network
+
+networks:
+  codeops-network:
+    name: codeops-network
+    driver: bridge
 
 volumes:
-  codeops_data:
+  codeops-postgres-data:
+    name: codeops-postgres-data
