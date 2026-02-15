@@ -1,5 +1,6 @@
 package com.codeops.security;
 
+import com.codeops.config.RequestCorrelationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +42,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitingFilter;
+    private final RequestCorrelationFilter requestCorrelationFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     /**
@@ -80,6 +82,7 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(31536000)
                         )
                 )
+                .addFilterBefore(requestCorrelationFilter, RateLimitFilter.class)
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

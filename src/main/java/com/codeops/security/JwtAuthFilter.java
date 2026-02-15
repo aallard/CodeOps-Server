@@ -69,6 +69,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
+        log.debug("Token extraction attempted for {}", request.getRequestURI());
+
         if (jwtTokenProvider.validateToken(token)) {
             UUID userId = jwtTokenProvider.getUserIdFromToken(token);
             String email = jwtTokenProvider.getEmailFromToken(token);
@@ -82,8 +84,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            log.debug("SecurityContext set for userId={} roles={}", userId, roles);
         } else {
-            log.warn("Invalid JWT token from IP: {}", request.getRemoteAddr());
+            log.warn("Invalid JWT token from IP: {} for path: {}", request.getRemoteAddr(), request.getRequestURI());
         }
 
         filterChain.doFilter(request, response);

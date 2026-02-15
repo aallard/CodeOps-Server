@@ -31,3 +31,6 @@ codeops:
 logging:
   level:
     com.codeops: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN

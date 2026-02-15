@@ -50,3 +50,5 @@ logging:
   level:
     com.codeops: DEBUG
     org.hibernate.SQL: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG

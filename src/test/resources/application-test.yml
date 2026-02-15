@@ -51,3 +51,4 @@ logging:
   level:
     com.codeops: WARN
     org.hibernate.SQL: WARN
+    org.springframework.security: WARN

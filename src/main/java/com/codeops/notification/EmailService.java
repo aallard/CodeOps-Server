@@ -64,7 +64,7 @@ public class EmailService {
      */
     public void sendEmail(String toEmail, String subject, String htmlBody) {
         if (!sesEnabled) {
-            log.info("Email (dev mode): to={}, subject={}", toEmail, subject);
+            log.warn("SES disabled — email logged instead of sent: to={}, subject={}", toEmail, subject);
             return;
         }
         try {
@@ -79,8 +79,9 @@ public class EmailService {
                     .source(fromEmail)
                     .build();
             sesClient.sendEmail(request);
+            log.info("Email sent successfully: to={}, subject={}", toEmail, subject);
         } catch (SesException e) {
-            log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
+            log.error("SES send failure: to={}, error={}", toEmail, e.getMessage(), e);
         }
     }
 

@@ -63,6 +63,7 @@ public class NotificationDispatcher {
      */
     @Async
     public void dispatchJobCompleted(UUID teamId, UUID jobId, String projectName, String branch, int healthScore, int criticalCount, int highCount, String runByName) {
+        log.info("Dispatching job completed notification: teamId={} jobId={} project={}", teamId, jobId, projectName);
         try {
             var team = teamRepository.findById(teamId).orElse(null);
             if (team == null) {
@@ -95,6 +96,7 @@ public class NotificationDispatcher {
      */
     @Async
     public void dispatchCriticalFinding(UUID teamId, UUID projectId, String projectName, int criticalCount, String jobUrl) {
+        log.info("Dispatching critical finding notification: teamId={} projectId={} criticalCount={}", teamId, projectId, criticalCount);
         try {
             var team = teamRepository.findById(teamId).orElse(null);
             if (team == null) {
@@ -129,6 +131,7 @@ public class NotificationDispatcher {
      */
     @Async
     public void dispatchTaskAssigned(UUID userId, String taskTitle, String projectName) {
+        log.info("Dispatching task assigned notification: userId={} project={}", userId, projectName);
         try {
             User user = userRepository.findById(userId).orElse(null);
             if (user != null && notificationService.shouldNotify(userId, "TASK_ASSIGNED", "email")) {
@@ -153,6 +156,7 @@ public class NotificationDispatcher {
      */
     @Async
     public void dispatchInvitation(String toEmail, String teamName, String inviterName, String acceptUrl) {
+        log.info("Dispatching invitation notification: toEmail={} teamName={}", toEmail, teamName);
         try {
             emailService.sendInvitationEmail(toEmail, teamName, inviterName, acceptUrl);
         } catch (Exception e) {

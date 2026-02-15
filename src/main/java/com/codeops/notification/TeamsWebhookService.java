@@ -36,6 +36,7 @@ public class TeamsWebhookService {
     private final ObjectMapper objectMapper;
 
     private void validateWebhookUrl(String url) {
+        log.debug("Validating webhook URL");
         try {
             URI uri = new URI(url);
             String host = uri.getHost();
@@ -51,6 +52,7 @@ public class TeamsWebhookService {
                 throw new IllegalArgumentException("Webhook URL must use HTTPS");
             }
         } catch (URISyntaxException | UnknownHostException e) {
+            log.warn("Webhook URL validation failed: {}", e.getMessage());
             throw new IllegalArgumentException("Invalid webhook URL: " + e.getMessage());
         }
     }
@@ -105,8 +107,9 @@ public class TeamsWebhookService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
             restTemplate.postForEntity(webhookUrl, entity, String.class);
+            log.info("Webhook posted successfully: title={}", title);
         } catch (Exception e) {
-            log.error("Failed to post to Teams webhook: {}", e.getMessage());
+            log.error("Webhook delivery failed: title={}, error={}", title, e.getMessage(), e);
         }
     }
 

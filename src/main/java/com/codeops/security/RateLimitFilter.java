@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,6 +30,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private static final int MAX_AUTH_REQUESTS_PER_MINUTE = 10;
     private static final long WINDOW_MS = 60_000L;
@@ -62,11 +66,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return existing;
             });
             if (window.count.get() > MAX_AUTH_REQUESTS_PER_MINUTE) {
+                log.warn("Rate limit exceeded for IP={} endpoint={} count={}", key, request.getRequestURI(), window.count.get());
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write("{\"status\":429,\"message\":\"Rate limit exceeded. Try again later.\"}");
                 return;
             }
+            log.debug("Rate limit check passed for IP={} count={}", key, window.count.get());
         }
         chain.doFilter(request, response);
     }

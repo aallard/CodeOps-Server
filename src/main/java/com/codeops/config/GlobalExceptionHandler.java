@@ -45,6 +45,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorResponse(404, "Resource not found"));
     }
 
@@ -70,6 +71,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
         return ResponseEntity.status(403).body(new ErrorResponse(403, "Access denied"));
     }
 
@@ -85,6 +87,7 @@ public class GlobalExceptionHandler {
         String msg = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
+        log.warn("Validation failed: {}", msg);
         return ResponseEntity.status(400).body(new ErrorResponse(400, msg));
     }
 
@@ -97,6 +100,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsNotFound(NotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorResponse(404, ex.getMessage()));
     }
 
@@ -109,6 +113,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsValidation(ValidationException ex) {
+        log.warn("Validation failed: {}", ex.getMessage());
         return ResponseEntity.status(400).body(new ErrorResponse(400, ex.getMessage()));
     }
 
@@ -121,6 +126,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AuthorizationException.class)
     public ResponseEntity<ErrorResponse> handleCodeOpsAuth(AuthorizationException ex) {
+        log.warn("Authorization denied: {}", ex.getMessage());
         return ResponseEntity.status(403).body(new ErrorResponse(403, ex.getMessage()));
     }
 
