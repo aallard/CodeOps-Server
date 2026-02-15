@@ -10,6 +10,8 @@ import com.codeops.repository.TeamRepository;
 import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuditLogService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
+
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
@@ -56,6 +60,7 @@ public class AuditLogService {
     @Async
     @Transactional
     public void log(UUID userId, UUID teamId, String action, String entityType, UUID entityId, String details) {
+        logger.debug("Audit log entry: userId={}, teamId={}, action={}, entityType={}, entityId={}", userId, teamId, action, entityType, entityId);
         AuditLog entry = new AuditLog();
         if (userId != null) {
             entry.setUser(userRepository.findById(userId).orElse(null));
@@ -69,6 +74,7 @@ public class AuditLogService {
         entry.setDetails(details);
         entry.setCreatedAt(Instant.now());
         auditLogRepository.save(entry);
+        logger.debug("Audit log entry created for action={}, entityType={}, entityId={}", action, entityType, entityId);
     }
 
     /**
@@ -81,6 +87,7 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> getTeamAuditLog(UUID teamId, Pageable pageable) {
+        logger.debug("getTeamAuditLog called with teamId={}", teamId);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         teamMemberRepository.findByTeamIdAndUserId(teamId, currentUserId)
                 .orElseThrow(() -> new AccessDeniedException("Not a member of this team"));
@@ -101,6 +108,7 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> getUserAuditLog(UUID userId, Pageable pageable) {
+        logger.debug("getUserAuditLog called with userId={}", userId);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (!currentUserId.equals(userId)) {
             throw new AccessDeniedException("Cannot access another user's audit log");

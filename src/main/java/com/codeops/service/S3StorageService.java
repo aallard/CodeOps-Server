@@ -58,6 +58,7 @@ public class S3StorageService {
      * @throws RuntimeException if writing to local storage fails
      */
     public String upload(String key, byte[] data, String contentType) {
+        log.debug("upload called with key={}, contentType={}, dataSize={}", key, contentType, data.length);
         if (s3Enabled && s3Client != null) {
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(bucket)
@@ -65,14 +66,16 @@ public class S3StorageService {
                     .contentType(contentType)
                     .build();
             s3Client.putObject(request, RequestBody.fromBytes(data));
-            log.debug("Uploaded to S3: {}/{}", bucket, key);
+            log.info("Uploaded to S3: bucket={}, key={}, size={}", bucket, key, data.length);
         } else {
+            log.info("S3 disabled, using local fallback for upload key={}", key);
             try {
                 Path filePath = Paths.get(localStoragePath, key);
                 Files.createDirectories(filePath.getParent());
                 Files.write(filePath, data);
-                log.debug("Uploaded to local storage: {}", filePath);
+                log.info("Uploaded to local storage: path={}, size={}", filePath, data.length);
             } catch (IOException e) {
+                log.error("Failed to write to local storage for key={}", key, e);
                 throw new RuntimeException("Failed to write to local storage", e);
             }
         }
@@ -90,20 +93,28 @@ public class S3StorageService {
      * @throws RuntimeException if the download or file read fails
      */
     public byte[] download(String key) {
+        log.debug("download called with key={}", key);
         if (s3Enabled && s3Client != null) {
             GetObjectRequest request = GetObjectRequest.builder()
                     .bucket(bucket)
                     .key(key)
                     .build();
             try {
-                return s3Client.getObject(request).readAllBytes();
+                byte[] data = s3Client.getObject(request).readAllBytes();
+                log.info("Downloaded from S3: bucket={}, key={}, size={}", bucket, key, data.length);
+                return data;
             } catch (IOException e) {
+                log.error("Failed to download from S3 for key={}", key, e);
                 throw new RuntimeException("Failed to download from S3", e);
             }
         } else {
+            log.info("S3 disabled, using local fallback for download key={}", key);
             try {
-                return Files.readAllBytes(Paths.get(localStoragePath, key));
+                byte[] data = Files.readAllBytes(Paths.get(localStoragePath, key));
+                log.info("Downloaded from local storage: key={}, size={}", key, data.length);
+                return data;
             } catch (IOException e) {
+                log.error("Failed to read from local storage for key={}", key, e);
                 throw new RuntimeException("Failed to read from local storage", e);
             }
         }
@@ -119,18 +130,21 @@ public class S3StorageService {
      * @throws RuntimeException if the deletion from local storage fails
      */
     public void delete(String key) {
+        log.debug("delete called with key={}", key);
         if (s3Enabled && s3Client != null) {
             DeleteObjectRequest request = DeleteObjectRequest.builder()
                     .bucket(bucket)
                     .key(key)
                     .build();
             s3Client.deleteObject(request);
-            log.debug("Deleted from S3: {}/{}", bucket, key);
+            log.info("Deleted from S3: bucket={}, key={}", bucket, key);
         } else {
+            log.info("S3 disabled, using local fallback for delete key={}", key);
             try {
                 Files.deleteIfExists(Paths.get(localStoragePath, key));
-                log.debug("Deleted from local storage: {}", key);
+                log.info("Deleted from local storage: key={}", key);
             } catch (IOException e) {
+                log.error("Failed to delete from local storage for key={}", key, e);
                 throw new RuntimeException("Failed to delete from local storage", e);
             }
         }
@@ -148,10 +162,12 @@ public class S3StorageService {
      * @return a URI string pointing to the stored object
      */
     public String generatePresignedUrl(String key, Duration expiry) {
+        log.debug("generatePresignedUrl called with key={}, expiry={}", key, expiry);
         if (s3Enabled && s3Client != null) {
             // For presigned URLs, would need S3Presigner — returning S3 URI for now
             return "s3://" + bucket + "/" + key;
         } else {
+            log.info("S3 disabled, returning local URI for key={}", key);
             return "local://" + key;
         }
     }

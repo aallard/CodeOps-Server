@@ -10,6 +10,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -37,6 +39,8 @@ import java.util.UUID;
 @Transactional
 public class AdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final ProjectRepository projectRepository;
@@ -59,6 +63,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
+        log.debug("getAllUsers called with pageable={}", pageable);
         verifyCurrentUserIsAdmin();
         return userRepository.findAll(pageable)
                 .map(this::mapToUserResponse);
@@ -74,6 +79,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
+        log.debug("getUserById called with userId={}", userId);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (!SecurityUtils.isAdmin()) {
             throw new AccessDeniedException("Admin access required");
@@ -95,10 +101,17 @@ public class AdminService {
      * @throws EntityNotFoundException if no user exists with the given ID
      */
     public UserResponse updateUserStatus(UUID userId, AdminUpdateUserRequest request) {
+        log.debug("updateUserStatus called with userId={}, isActive={}", userId, request.isActive());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         if (request.isActive() != null) {
+            boolean previousState = Boolean.TRUE.equals(user.getIsActive());
             user.setIsActive(request.isActive());
+            if (previousState && !request.isActive()) {
+                log.info("User deactivated: userId={}", userId);
+            } else if (!previousState && request.isActive()) {
+                log.info("User activated: userId={}", userId);
+            }
         }
         user = userRepository.save(user);
         return mapToUserResponse(user);
@@ -113,6 +126,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public SystemSettingResponse getSystemSetting(String key) {
+        log.debug("getSystemSetting called with key={}", key);
         SystemSetting setting = systemSettingRepository.findById(key)
                 .orElseThrow(() -> new EntityNotFoundException("System setting not found: " + key));
         return mapToSettingResponse(setting);
@@ -129,6 +143,7 @@ public class AdminService {
      * @throws EntityNotFoundException if the current user is not found
      */
     public SystemSettingResponse updateSystemSetting(UpdateSystemSettingRequest request) {
+        log.debug("updateSystemSetting called with key={}", request.key());
         var existing = systemSettingRepository.findById(request.key());
         SystemSetting setting;
         if (existing.isPresent()) {
@@ -136,6 +151,7 @@ public class AdminService {
             setting.setValue(request.value());
             setting.setUpdatedBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")));
             setting.setUpdatedAt(Instant.now());
+            log.info("System setting updated: key={}", request.key());
         } else {
             setting = SystemSetting.builder()
                     .settingKey(request.key())
@@ -143,6 +159,7 @@ public class AdminService {
                     .updatedBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                     .updatedAt(Instant.now())
                     .build();
+            log.info("System setting created: key={}", request.key());
         }
         setting = systemSettingRepository.save(setting);
         return mapToSettingResponse(setting);
@@ -155,6 +172,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public List<SystemSettingResponse> getAllSettings() {
+        log.debug("getAllSettings called");
         List<SystemSetting> settings = systemSettingRepository.findAll();
         return settings.stream()
                 .map(this::mapToSettingResponse)
@@ -172,6 +190,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getUsageStats() {
+        log.debug("getUsageStats called");
         verifyCurrentUserIsAdmin();
         long totalUsers = userRepository.count();
         long activeUsers = userRepository.countByIsActiveTrue();

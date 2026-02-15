@@ -1,5 +1,7 @@
 package com.codeops.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +35,8 @@ import java.util.Base64;
 @Service
 public class EncryptionService {
 
+    private static final Logger log = LoggerFactory.getLogger(EncryptionService.class);
+
     private final SecretKey secretKey;
 
     /**
@@ -51,7 +55,9 @@ public class EncryptionService {
             byte[] keyBytes = factory.generateSecret(spec).getEncoded();
             // TODO: Changing key derivation invalidates existing encrypted data — requires re-encryption migration
             this.secretKey = new SecretKeySpec(keyBytes, "AES");
+            log.info("EncryptionService initialized successfully");
         } catch (Exception e) {
+            log.error("Failed to initialize encryption key", e);
             throw new RuntimeException("Failed to initialize encryption key", e);
         }
     }
@@ -67,6 +73,7 @@ public class EncryptionService {
      * @throws RuntimeException if encryption fails due to a cryptographic error
      */
     public String encrypt(String plaintext) {
+        log.debug("encrypt operation requested");
         try {
             byte[] iv = new byte[12];
             new SecureRandom().nextBytes(iv);
@@ -79,8 +86,10 @@ public class EncryptionService {
             System.arraycopy(iv, 0, combined, 0, iv.length);
             System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
 
+            log.info("Encryption completed successfully");
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
+            log.error("Encryption failed", e);
             throw new RuntimeException("Encryption failed", e);
         }
     }
@@ -97,6 +106,7 @@ public class EncryptionService {
      * @throws RuntimeException if decryption fails due to a wrong key, corrupted data, or tampered ciphertext
      */
     public String decrypt(String encryptedBase64) {
+        log.debug("decrypt operation requested");
         try {
             byte[] combined = Base64.getDecoder().decode(encryptedBase64);
             byte[] iv = Arrays.copyOfRange(combined, 0, 12);
@@ -106,8 +116,10 @@ public class EncryptionService {
             cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(128, iv));
             byte[] plaintext = cipher.doFinal(ciphertext);
 
+            log.info("Decryption completed successfully");
             return new String(plaintext, StandardCharsets.UTF_8);
         } catch (Exception e) {
+            log.error("Decryption failed", e);
             throw new RuntimeException("Decryption failed", e);
         }
     }

@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.codeops.security.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
@@ -35,6 +37,8 @@ import java.util.UUID;
 @Transactional
 public class NotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
     private final NotificationPreferenceRepository preferenceRepository;
     private final UserRepository userRepository;
 
@@ -54,6 +58,7 @@ public class NotificationService {
      */
     @Transactional(readOnly = true)
     public List<NotificationPreferenceResponse> getPreferences(UUID userId) {
+        log.debug("getPreferences called with userId={}", userId);
         verifyCurrentUserAccess(userId);
         return preferenceRepository.findByUserId(userId).stream()
                 .map(this::mapToResponse)
@@ -73,6 +78,7 @@ public class NotificationService {
      * @throws EntityNotFoundException if the user is not found (when creating a new preference)
      */
     public NotificationPreferenceResponse updatePreference(UUID userId, UpdateNotificationPreferenceRequest request) {
+        log.debug("updatePreference called with userId={}, eventType={}", userId, request.eventType());
         verifyCurrentUserAccess(userId);
         var existing = preferenceRepository.findByUserIdAndEventType(userId, request.eventType());
         NotificationPreference pref;
@@ -80,6 +86,7 @@ public class NotificationService {
             pref = existing.get();
             pref.setInApp(request.inApp());
             pref.setEmail(request.email());
+            log.info("Updated notification preference for userId={}, eventType={}, inApp={}, email={}", userId, request.eventType(), request.inApp(), request.email());
         } else {
             pref = NotificationPreference.builder()
                     .user(userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found")))
@@ -87,6 +94,7 @@ public class NotificationService {
                     .inApp(request.inApp())
                     .email(request.email())
                     .build();
+            log.info("Created notification preference for userId={}, eventType={}, inApp={}, email={}", userId, request.eventType(), request.inApp(), request.email());
         }
         pref = preferenceRepository.save(pref);
         return mapToResponse(pref);
@@ -104,6 +112,7 @@ public class NotificationService {
      * @throws AccessDeniedException if the current user is not the specified user
      */
     public List<NotificationPreferenceResponse> updatePreferences(UUID userId, List<UpdateNotificationPreferenceRequest> requests) {
+        log.debug("updatePreferences called with userId={}, count={}", userId, requests.size());
         return requests.stream()
                 .map(request -> updatePreference(userId, request))
                 .toList();
@@ -123,8 +132,10 @@ public class NotificationService {
      */
     @Transactional(readOnly = true)
     public boolean shouldNotify(UUID userId, String eventType, String channel) {
+        log.debug("shouldNotify called with userId={}, eventType={}, channel={}", userId, eventType, channel);
         var pref = preferenceRepository.findByUserIdAndEventType(userId, eventType);
         if (pref.isEmpty()) {
+            log.warn("No notification preference found for userId={}, eventType={}, defaulting for channel={}", userId, eventType, channel);
             return "inApp".equals(channel);
         }
         NotificationPreference p = pref.get();

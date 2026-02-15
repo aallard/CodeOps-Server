@@ -12,6 +12,8 @@ import com.codeops.repository.TeamMemberRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,8 @@ import java.util.UUID;
 @Transactional
 public class AgentRunService {
 
+    private static final Logger log = LoggerFactory.getLogger(AgentRunService.class);
+
     private final AgentRunRepository agentRunRepository;
     private final QaJobRepository qaJobRepository;
     private final TeamMemberRepository teamMemberRepository;
@@ -48,6 +52,7 @@ public class AgentRunService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public AgentRunResponse createAgentRun(CreateAgentRunRequest request) {
+        log.debug("createAgentRun called with jobId={}, agentType={}", request.jobId(), request.agentType());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -62,6 +67,7 @@ public class AgentRunService {
                 .build();
 
         run = agentRunRepository.save(run);
+        log.info("Agent run created: id={}, jobId={}, agentType={}, status={}", run.getId(), request.jobId(), request.agentType(), AgentStatus.PENDING);
         return mapToResponse(run);
     }
 
@@ -76,6 +82,7 @@ public class AgentRunService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public List<AgentRunResponse> createAgentRuns(UUID jobId, List<AgentType> agentTypes) {
+        log.debug("createAgentRuns called with jobId={}, agentTypes={}", jobId, agentTypes);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -92,6 +99,7 @@ public class AgentRunService {
                 .toList();
 
         runs = agentRunRepository.saveAll(runs);
+        log.info("Batch agent runs created: jobId={}, count={}, agentTypes={}", jobId, runs.size(), agentTypes);
         return runs.stream().map(this::mapToResponse).toList();
     }
 
@@ -105,6 +113,7 @@ public class AgentRunService {
      */
     @Transactional(readOnly = true)
     public List<AgentRunResponse> getAgentRuns(UUID jobId) {
+        log.debug("getAgentRuns called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -123,6 +132,7 @@ public class AgentRunService {
      */
     @Transactional(readOnly = true)
     public AgentRunResponse getAgentRun(UUID agentRunId) {
+        log.debug("getAgentRun called with agentRunId={}", agentRunId);
         AgentRun run = agentRunRepository.findById(agentRunId)
                 .orElseThrow(() -> new EntityNotFoundException("Agent run not found"));
         verifyTeamMembership(run.getJob().getProject().getTeam().getId());
@@ -143,10 +153,12 @@ public class AgentRunService {
      * @throws AccessDeniedException if the current user is not a member of the associated team
      */
     public AgentRunResponse updateAgentRun(UUID agentRunId, UpdateAgentRunRequest request) {
+        log.debug("updateAgentRun called with agentRunId={}", agentRunId);
         AgentRun run = agentRunRepository.findById(agentRunId)
                 .orElseThrow(() -> new EntityNotFoundException("Agent run not found"));
         verifyTeamMembership(run.getJob().getProject().getTeam().getId());
 
+        AgentStatus previousStatus = run.getStatus();
         if (request.status() != null) run.setStatus(request.status());
         if (request.result() != null) run.setResult(request.result());
         if (request.reportS3Key() != null) run.setReportS3Key(request.reportS3Key());
@@ -160,6 +172,12 @@ public class AgentRunService {
         }
 
         run = agentRunRepository.save(run);
+        if (request.status() != null && previousStatus != request.status()) {
+            log.info("Agent run status transition: id={}, from={}, to={}", agentRunId, previousStatus, request.status());
+        }
+        if (request.completedAt() != null) {
+            log.info("Agent run completed: id={}, status={}, score={}, findingsCount={}", agentRunId, run.getStatus(), run.getScore(), run.getFindingsCount());
+        }
         return mapToResponse(run);
     }
 

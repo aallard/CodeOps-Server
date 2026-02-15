@@ -11,6 +11,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class MetricsService {
 
+    private static final Logger log = LoggerFactory.getLogger(MetricsService.class);
+
     private final ProjectRepository projectRepository;
     private final QaJobRepository qaJobRepository;
     private final FindingRepository findingRepository;
@@ -59,6 +63,7 @@ public class MetricsService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public ProjectMetricsResponse getProjectMetrics(UUID projectId) {
+        log.debug("getProjectMetrics called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -96,6 +101,7 @@ public class MetricsService {
             openVulnerabilities = (int) vulnerabilityRepository.countByScanIdAndStatus(latestScan.get().getId(), VulnerabilityStatus.OPEN);
         }
 
+        log.info("Project metrics aggregated for projectId={}: healthScore={}, totalJobs={}, totalFindings={}, openCritical={}, openHigh={}", projectId, currentHealthScore, totalJobs, totalFindings, openCritical, openHigh);
         return new ProjectMetricsResponse(
                 projectId, project.getName(), currentHealthScore, previousHealthScore,
                 totalJobs, totalFindings, openCritical, openHigh,
@@ -115,6 +121,7 @@ public class MetricsService {
      * @throws AccessDeniedException if the current user is not a member of the team
      */
     public TeamMetricsResponse getTeamMetrics(UUID teamId) {
+        log.debug("getTeamMetrics called with teamId={}", teamId);
         verifyTeamMembership(teamId);
 
         List<Project> projects = projectRepository.findByTeamIdAndIsArchivedFalse(teamId);
@@ -144,6 +151,7 @@ public class MetricsService {
         int projectsBelowThreshold = (int) projects.stream()
                 .filter(p -> p.getHealthScore() != null && p.getHealthScore() < 70).count();
 
+        log.info("Team metrics aggregated for teamId={}: totalProjects={}, totalJobs={}, totalFindings={}, avgHealth={}, belowThreshold={}", teamId, totalProjects, totalJobs, totalFindings, averageHealthScore, projectsBelowThreshold);
         return new TeamMetricsResponse(
                 teamId, totalProjects, totalJobs, totalFindings,
                 averageHealthScore, projectsBelowThreshold, openCriticalFindings
@@ -163,6 +171,7 @@ public class MetricsService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public List<HealthSnapshotResponse> getHealthTrend(UUID projectId, int days) {
+        log.debug("getHealthTrend called with projectId={}, days={}", projectId, days);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());

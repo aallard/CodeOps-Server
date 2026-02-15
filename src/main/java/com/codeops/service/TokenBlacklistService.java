@@ -1,5 +1,7 @@
 package com.codeops.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -22,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class TokenBlacklistService {
 
+    private static final Logger log = LoggerFactory.getLogger(TokenBlacklistService.class);
+
     private final ConcurrentHashMap.KeySetView<String, Boolean> blacklistedTokens = ConcurrentHashMap.newKeySet();
 
     /**
@@ -37,6 +41,9 @@ public class TokenBlacklistService {
     public void blacklist(String jti, Instant expiry) {
         if (jti != null) {
             blacklistedTokens.add(jti);
+            log.info("Token blacklisted: jti={}, expiry={}, totalBlacklisted={}", jti, expiry, blacklistedTokens.size());
+        } else {
+            log.warn("blacklist called with null jti, ignoring");
         }
     }
 
@@ -47,6 +54,10 @@ public class TokenBlacklistService {
      * @return {@code true} if the JTI is non-null and has been blacklisted; {@code false} otherwise
      */
     public boolean isBlacklisted(String jti) {
-        return jti != null && blacklistedTokens.contains(jti);
+        boolean result = jti != null && blacklistedTokens.contains(jti);
+        if (result) {
+            log.debug("Token is blacklisted: jti={}", jti);
+        }
+        return result;
     }
 }
