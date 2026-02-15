@@ -29,7 +29,7 @@ public final class AppConstants {
     public static final int JWT_EXPIRY_HOURS = 24;
     public static final int REFRESH_TOKEN_EXPIRY_DAYS = 30;
     public static final int INVITATION_EXPIRY_DAYS = 7;
-    public static final int MIN_PASSWORD_LENGTH = 8;
+    public static final int MIN_PASSWORD_LENGTH = 1;
 
     // Notifications
     public static final int HEALTH_DIGEST_DAY = 1;  // Monday

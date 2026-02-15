@@ -94,9 +94,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedUsers() {
-        String hash = passwordEncoder.encode("password123");
+        String hash = passwordEncoder.encode("pass");
         adam = userRepository.save(User.builder()
-                .email("adam@codeops.dev").passwordHash(hash).displayName("Adam Allard").build());
+                .email("adam@allard.com").passwordHash(hash).displayName("Adam Allard").build());
         sarah = userRepository.save(User.builder()
                 .email("sarah@codeops.dev").passwordHash(hash).displayName("Sarah Chen").build());
         mike = userRepository.save(User.builder()
