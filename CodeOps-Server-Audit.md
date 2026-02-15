@@ -1,4 +1,18 @@
-# CodeOps-Server Codebase Audit
+# CodeOps-Server — Comprehensive Codebase Audit
+
+**Audit Date:** 2026-02-15T21:12:46Z
+**Branch:** main
+**Commit:** cd57a0bc922bbeb08273af6444675bcdbf95b30f COC-019: Fix security filter ordering for IT tests + organize Docker with naming, labels, healthcheck, and network isolation
+**Auditor:** Claude Code (Automated)
+**Purpose:** Zero-context reference for AI-assisted development
+**Audit File:** CodeOps-Server-Audit.md
+**OpenAPI Spec:** openapi.yaml
+**Quality Grade:** A
+**Overall Score:** 97/104 (93%)
+
+> This audit is the single source of truth for the CodeOps-Server codebase.
+> An AI reading only this document should be able to generate accurate code
+> changes, new features, tests, and fixes without filesystem access.
 
 ---
 
@@ -1092,57 +1106,155 @@ Due to the large number of endpoints (141 total), the complete endpoint listing 
 ## 12. API Surface
 
 | # | Method | Path | Auth | Request Body | Response Body |
-|---|--------|------|------|-------------|--------------|
-| 1 | POST | `/api/v1/auth/register` | Public | `RegisterRequest` | `AuthResponse` |
+|---|--------|------|------|--------------|---------------|
+| 1 | POST | `/api/v1/auth/register` | Public | `RegisterRequest` | `AuthResponse` (201) |
 | 2 | POST | `/api/v1/auth/login` | Public | `LoginRequest` | `AuthResponse` |
 | 3 | POST | `/api/v1/auth/refresh` | Public | `RefreshTokenRequest` | `AuthResponse` |
-| 4 | POST | `/api/v1/auth/logout` | Authenticated | (token in header) | 204 |
-| 5 | POST | `/api/v1/auth/change-password` | Authenticated | `ChangePasswordRequest` | 204 |
-| 6 | GET | `/api/v1/admin/users` | ADMIN/OWNER | -- | `Page<UserResponse>` |
-| 7 | GET | `/api/v1/admin/users/{userId}` | ADMIN/OWNER | -- | `UserResponse` |
-| 8 | PUT | `/api/v1/admin/users/{userId}` | ADMIN/OWNER | `AdminUpdateUserRequest` | `UserResponse` |
-| 9 | GET | `/api/v1/admin/settings` | ADMIN/OWNER | -- | `List<SystemSettingResponse>` |
-| 10 | GET | `/api/v1/admin/settings/{key}` | ADMIN/OWNER | -- | `SystemSettingResponse` |
-| 11 | PUT | `/api/v1/admin/settings` | ADMIN/OWNER | `UpdateSystemSettingRequest` | `SystemSettingResponse` |
-| 12 | GET | `/api/v1/admin/stats` | ADMIN/OWNER | -- | `Map<String, Object>` |
-| 13 | GET | `/api/v1/admin/audit-log/team/{teamId}` | ADMIN/OWNER | -- | `Page<AuditLogResponse>` |
-| 14 | GET | `/api/v1/admin/audit-log/user/{userId}` | ADMIN/OWNER | -- | `Page<AuditLogResponse>` |
-| 15 | GET | `/api/v1/users/me` | Authenticated | -- | `UserResponse` |
-| 16 | PUT | `/api/v1/users/me` | Authenticated | `UpdateUserRequest` | `UserResponse` |
-| 17 | GET | `/api/v1/users/{userId}` | Authenticated | -- | `UserResponse` |
-| 18 | GET | `/api/v1/users/search` | Authenticated | `?q=` | `List<UserResponse>` |
-| 19 | POST | `/api/v1/teams` | Authenticated | `CreateTeamRequest` | `TeamResponse` (201) |
-| 20 | GET | `/api/v1/teams` | Authenticated | -- | `List<TeamResponse>` |
-| 21 | GET | `/api/v1/teams/{teamId}` | Authenticated | -- | `TeamResponse` |
-| 22 | PUT | `/api/v1/teams/{teamId}` | Authenticated | `UpdateTeamRequest` | `TeamResponse` |
-| 23 | DELETE | `/api/v1/teams/{teamId}` | Authenticated | -- | 204 |
-| 24 | GET | `/api/v1/teams/{teamId}/members` | Authenticated | -- | `List<TeamMemberResponse>` |
-| 25 | PUT | `/api/v1/teams/{teamId}/members/{userId}/role` | Authenticated | `UpdateMemberRoleRequest` | `TeamMemberResponse` |
-| 26 | DELETE | `/api/v1/teams/{teamId}/members/{userId}` | Authenticated | -- | 204 |
-| 27 | POST | `/api/v1/teams/{teamId}/invitations` | Authenticated | `InviteMemberRequest` | `InvitationResponse` (201) |
-| 28 | GET | `/api/v1/teams/{teamId}/invitations` | Authenticated | -- | `List<InvitationResponse>` |
-| 29 | POST | `/api/v1/teams/invitations/{token}/accept` | Authenticated | -- | `TeamResponse` |
-| 30 | DELETE | `/api/v1/teams/invitations/{invitationId}` | Authenticated | -- | 204 |
-| 31 | POST | `/api/v1/teams/{teamId}/projects` | Authenticated | `CreateProjectRequest` | `ProjectResponse` (201) |
-| 32 | GET | `/api/v1/teams/{teamId}/projects` | Authenticated | -- | `PageResponse<ProjectResponse>` |
-| 33 | GET | `/api/v1/projects/{projectId}` | Authenticated | -- | `ProjectResponse` |
-| 34 | PUT | `/api/v1/projects/{projectId}` | Authenticated | `UpdateProjectRequest` | `ProjectResponse` |
-| 35 | DELETE | `/api/v1/projects/{projectId}` | Authenticated | -- | 204 |
-| 36 | POST | `/api/v1/projects/{projectId}/archive` | Authenticated | -- | 204 |
-| 37 | POST | `/api/v1/projects/{projectId}/unarchive` | Authenticated | -- | 204 |
-| 38 | POST | `/api/v1/jobs` | Authenticated | `CreateJobRequest` | `JobResponse` (201) |
-| 39 | GET | `/api/v1/jobs/{jobId}` | Authenticated | -- | `JobResponse` |
-| 40 | PUT | `/api/v1/jobs/{jobId}` | Authenticated | `UpdateJobRequest` | `JobResponse` |
-| 41 | DELETE | `/api/v1/jobs/{jobId}` | Authenticated | -- | 204 |
-| 42 | GET | `/api/v1/jobs/project/{projectId}` | Authenticated | -- | `PageResponse<JobSummaryResponse>` |
-| 43 | GET | `/api/v1/jobs/user/{userId}` | Authenticated | -- | `PageResponse<JobSummaryResponse>` |
-| 44 | POST | `/api/v1/agent-runs` | Authenticated | `CreateAgentRunRequest` | `AgentRunResponse` (201) |
-| 45 | GET | `/api/v1/agent-runs/{agentRunId}` | Authenticated | -- | `AgentRunResponse` |
-| 46 | PUT | `/api/v1/agent-runs/{agentRunId}` | Authenticated | `UpdateAgentRunRequest` | `AgentRunResponse` |
-| 47 | GET | `/api/v1/agent-runs/job/{jobId}` | Authenticated | -- | `List<AgentRunResponse>` |
-| 48-141 | ... | (Findings, Tasks, BugInvestigation, Compliance, Directives, Personas, TechDebt, Dependencies, HealthMonitor, Metrics, Integrations, Reports, Notifications) | Authenticated | Various request DTOs | Various response DTOs |
+| 4 | POST | `/api/v1/auth/logout` | Authenticated | -- | 204 |
+| 5 | POST | `/api/v1/auth/change-password` | Authenticated | `ChangePasswordRequest` | 200 |
+| 6 | GET | `/api/v1/health` | Public | -- | `Map<String,Object>` |
+| 7 | GET | `/api/v1/users/me` | Authenticated | -- | `UserResponse` |
+| 8 | GET | `/api/v1/users/{userId}` | Authenticated | -- | `UserResponse` |
+| 9 | PUT | `/api/v1/users/me` | Authenticated | `UpdateUserRequest` | `UserResponse` |
+| 10 | GET | `/api/v1/users/search` | Authenticated | `?q=` | `List<UserResponse>` |
+| 11 | PUT | `/api/v1/users/{userId}/deactivate` | ADMIN/OWNER | -- | 204 |
+| 12 | PUT | `/api/v1/users/{userId}/activate` | ADMIN/OWNER | -- | 204 |
+| 13 | GET | `/api/v1/admin/users` | ADMIN/OWNER | -- | `Page<UserResponse>` |
+| 14 | GET | `/api/v1/admin/users/{userId}` | ADMIN/OWNER | -- | `UserResponse` |
+| 15 | PUT | `/api/v1/admin/users/{userId}` | ADMIN/OWNER | `AdminUpdateUserRequest` | `UserResponse` |
+| 16 | GET | `/api/v1/admin/settings` | ADMIN/OWNER | -- | `List<SystemSettingResponse>` |
+| 17 | GET | `/api/v1/admin/settings/{key}` | ADMIN/OWNER | -- | `SystemSettingResponse` |
+| 18 | PUT | `/api/v1/admin/settings` | ADMIN/OWNER | `UpdateSystemSettingRequest` | `SystemSettingResponse` |
+| 19 | GET | `/api/v1/admin/usage` | ADMIN/OWNER | -- | `Map<String,Object>` |
+| 20 | GET | `/api/v1/admin/audit-log/team/{teamId}` | ADMIN/OWNER | -- | `Page<AuditLogResponse>` |
+| 21 | GET | `/api/v1/admin/audit-log/user/{userId}` | ADMIN/OWNER | -- | `Page<AuditLogResponse>` |
+| 22 | POST | `/api/v1/teams` | Authenticated | `CreateTeamRequest` | `TeamResponse` (201) |
+| 23 | GET | `/api/v1/teams` | Authenticated | -- | `List<TeamResponse>` |
+| 24 | GET | `/api/v1/teams/{teamId}` | Authenticated | -- | `TeamResponse` |
+| 25 | PUT | `/api/v1/teams/{teamId}` | Authenticated | `UpdateTeamRequest` | `TeamResponse` |
+| 26 | DELETE | `/api/v1/teams/{teamId}` | Authenticated | -- | 204 |
+| 27 | GET | `/api/v1/teams/{teamId}/members` | Authenticated | -- | `List<TeamMemberResponse>` |
+| 28 | PUT | `/api/v1/teams/{teamId}/members/{userId}/role` | Authenticated | `UpdateMemberRoleRequest` | `TeamMemberResponse` |
+| 29 | DELETE | `/api/v1/teams/{teamId}/members/{userId}` | Authenticated | -- | 204 |
+| 30 | POST | `/api/v1/teams/{teamId}/invitations` | Authenticated | `InviteMemberRequest` | `InvitationResponse` (201) |
+| 31 | GET | `/api/v1/teams/{teamId}/invitations` | Authenticated | -- | `List<InvitationResponse>` |
+| 32 | DELETE | `/api/v1/teams/{teamId}/invitations/{invitationId}` | Authenticated | -- | 204 |
+| 33 | POST | `/api/v1/teams/invitations/{token}/accept` | Authenticated | -- | `TeamResponse` |
+| 34 | POST | `/api/v1/projects/{teamId}` | Authenticated | `CreateProjectRequest` | `ProjectResponse` (201) |
+| 35 | GET | `/api/v1/projects/team/{teamId}` | Authenticated | -- | `PageResponse<ProjectResponse>` |
+| 36 | GET | `/api/v1/projects/{projectId}` | Authenticated | -- | `ProjectResponse` |
+| 37 | PUT | `/api/v1/projects/{projectId}` | Authenticated | `UpdateProjectRequest` | `ProjectResponse` |
+| 38 | PUT | `/api/v1/projects/{projectId}/archive` | Authenticated | -- | 204 |
+| 39 | PUT | `/api/v1/projects/{projectId}/unarchive` | Authenticated | -- | 204 |
+| 40 | DELETE | `/api/v1/projects/{projectId}` | Authenticated | -- | 204 |
+| 41 | POST | `/api/v1/jobs` | Authenticated | `CreateJobRequest` | `JobResponse` (201) |
+| 42 | GET | `/api/v1/jobs/{jobId}` | Authenticated | -- | `JobResponse` |
+| 43 | GET | `/api/v1/jobs/project/{projectId}` | Authenticated | -- | `PageResponse<JobSummaryResponse>` |
+| 44 | GET | `/api/v1/jobs/mine` | Authenticated | -- | `PageResponse<JobSummaryResponse>` |
+| 45 | PUT | `/api/v1/jobs/{jobId}` | Authenticated | `UpdateJobRequest` | `JobResponse` |
+| 46 | DELETE | `/api/v1/jobs/{jobId}` | Authenticated | -- | 204 |
+| 47 | POST | `/api/v1/jobs/{jobId}/agents` | Authenticated | `CreateAgentRunRequest` | `AgentRunResponse` (201) |
+| 48 | POST | `/api/v1/jobs/{jobId}/agents/batch` | Authenticated | `List<AgentType>` | `List<AgentRunResponse>` |
+| 49 | GET | `/api/v1/jobs/{jobId}/agents` | Authenticated | -- | `List<AgentRunResponse>` |
+| 50 | PUT | `/api/v1/jobs/agents/{agentRunId}` | Authenticated | `UpdateAgentRunRequest` | `AgentRunResponse` |
+| 51 | GET | `/api/v1/jobs/{jobId}/investigation` | Authenticated | -- | `BugInvestigationResponse` |
+| 52 | POST | `/api/v1/jobs/{jobId}/investigation` | Authenticated | `CreateBugInvestigationRequest` | `BugInvestigationResponse` (201) |
+| 53 | PUT | `/api/v1/jobs/investigations/{investigationId}` | Authenticated | `UpdateBugInvestigationRequest` | `BugInvestigationResponse` |
+| 54 | POST | `/api/v1/findings` | Authenticated | `CreateFindingRequest` | `FindingResponse` (201) |
+| 55 | POST | `/api/v1/findings/batch` | Authenticated | `List<CreateFindingRequest>` | `List<FindingResponse>` (201) |
+| 56 | GET | `/api/v1/findings/{findingId}` | Authenticated | -- | `FindingResponse` |
+| 57 | GET | `/api/v1/findings/job/{jobId}` | Authenticated | -- | `PageResponse<FindingResponse>` |
+| 58 | GET | `/api/v1/findings/job/{jobId}/severity/{severity}` | Authenticated | -- | `PageResponse<FindingResponse>` |
+| 59 | GET | `/api/v1/findings/job/{jobId}/agent/{agentType}` | Authenticated | -- | `PageResponse<FindingResponse>` |
+| 60 | GET | `/api/v1/findings/job/{jobId}/status/{status}` | Authenticated | -- | `PageResponse<FindingResponse>` |
+| 61 | GET | `/api/v1/findings/job/{jobId}/counts` | Authenticated | -- | `Map<Severity,Long>` |
+| 62 | PUT | `/api/v1/findings/{findingId}/status` | Authenticated | `UpdateFindingStatusRequest` | `FindingResponse` |
+| 63 | PUT | `/api/v1/findings/bulk-status` | Authenticated | `BulkUpdateFindingsRequest` | `List<FindingResponse>` |
+| 64 | POST | `/api/v1/tasks` | Authenticated | `CreateTaskRequest` | `TaskResponse` (201) |
+| 65 | POST | `/api/v1/tasks/batch` | Authenticated | `List<CreateTaskRequest>` | `List<TaskResponse>` (201) |
+| 66 | GET | `/api/v1/tasks/job/{jobId}` | Authenticated | -- | `PageResponse<TaskResponse>` |
+| 67 | GET | `/api/v1/tasks/{taskId}` | Authenticated | -- | `TaskResponse` |
+| 68 | GET | `/api/v1/tasks/assigned-to-me` | Authenticated | -- | `PageResponse<TaskResponse>` |
+| 69 | PUT | `/api/v1/tasks/{taskId}` | Authenticated | `UpdateTaskRequest` | `TaskResponse` |
+| 70 | POST | `/api/v1/compliance/specs` | Authenticated | `CreateSpecificationRequest` | `SpecificationResponse` (201) |
+| 71 | GET | `/api/v1/compliance/specs/job/{jobId}` | Authenticated | -- | `PageResponse<SpecificationResponse>` |
+| 72 | POST | `/api/v1/compliance/items` | Authenticated | `CreateComplianceItemRequest` | `ComplianceItemResponse` (201) |
+| 73 | POST | `/api/v1/compliance/items/batch` | Authenticated | `List<CreateComplianceItemRequest>` | `List<ComplianceItemResponse>` (201) |
+| 74 | GET | `/api/v1/compliance/items/job/{jobId}` | Authenticated | -- | `PageResponse<ComplianceItemResponse>` |
+| 75 | GET | `/api/v1/compliance/items/job/{jobId}/status/{status}` | Authenticated | -- | `PageResponse<ComplianceItemResponse>` |
+| 76 | GET | `/api/v1/compliance/summary/job/{jobId}` | Authenticated | -- | `Map<String,Object>` |
+| 77 | POST | `/api/v1/directives` | Authenticated | `CreateDirectiveRequest` | `DirectiveResponse` (201) |
+| 78 | GET | `/api/v1/directives/{directiveId}` | Authenticated | -- | `DirectiveResponse` |
+| 79 | GET | `/api/v1/directives/team/{teamId}` | Authenticated | -- | `List<DirectiveResponse>` |
+| 80 | GET | `/api/v1/directives/project/{projectId}` | Authenticated | -- | `List<DirectiveResponse>` |
+| 81 | PUT | `/api/v1/directives/{directiveId}` | Authenticated | `UpdateDirectiveRequest` | `DirectiveResponse` |
+| 82 | DELETE | `/api/v1/directives/{directiveId}` | Authenticated | -- | 204 |
+| 83 | POST | `/api/v1/directives/assign` | Authenticated | `AssignDirectiveRequest` | `ProjectDirectiveResponse` (201) |
+| 84 | DELETE | `/api/v1/directives/project/{projectId}/directive/{directiveId}` | Authenticated | -- | 204 |
+| 85 | GET | `/api/v1/directives/project/{projectId}/assignments` | Authenticated | -- | `List<ProjectDirectiveResponse>` |
+| 86 | GET | `/api/v1/directives/project/{projectId}/enabled` | Authenticated | -- | `List<DirectiveResponse>` |
+| 87 | PUT | `/api/v1/directives/project/{projectId}/directive/{directiveId}/toggle` | Authenticated | -- | `ProjectDirectiveResponse` |
+| 88 | POST | `/api/v1/personas` | Authenticated | `CreatePersonaRequest` | `PersonaResponse` (201) |
+| 89 | GET | `/api/v1/personas/{personaId}` | Authenticated | -- | `PersonaResponse` |
+| 90 | GET | `/api/v1/personas/team/{teamId}` | Authenticated | -- | `PageResponse<PersonaResponse>` |
+| 91 | GET | `/api/v1/personas/team/{teamId}/agent/{agentType}` | Authenticated | -- | `List<PersonaResponse>` |
+| 92 | GET | `/api/v1/personas/team/{teamId}/default/{agentType}` | Authenticated | -- | `PersonaResponse` |
+| 93 | GET | `/api/v1/personas/mine` | Authenticated | -- | `List<PersonaResponse>` |
+| 94 | GET | `/api/v1/personas/system` | Authenticated | -- | `List<PersonaResponse>` |
+| 95 | PUT | `/api/v1/personas/{personaId}` | Authenticated | `UpdatePersonaRequest` | `PersonaResponse` |
+| 96 | DELETE | `/api/v1/personas/{personaId}` | Authenticated | -- | 204 |
+| 97 | PUT | `/api/v1/personas/{personaId}/set-default` | Authenticated | -- | `PersonaResponse` |
+| 98 | PUT | `/api/v1/personas/{personaId}/remove-default` | Authenticated | -- | `PersonaResponse` |
+| 99 | POST | `/api/v1/tech-debt` | Authenticated | `CreateTechDebtItemRequest` | `TechDebtItemResponse` (201) |
+| 100 | POST | `/api/v1/tech-debt/batch` | Authenticated | `List<CreateTechDebtItemRequest>` | `List<TechDebtItemResponse>` (201) |
+| 101 | GET | `/api/v1/tech-debt/{itemId}` | Authenticated | -- | `TechDebtItemResponse` |
+| 102 | GET | `/api/v1/tech-debt/project/{projectId}` | Authenticated | -- | `PageResponse<TechDebtItemResponse>` |
+| 103 | GET | `/api/v1/tech-debt/project/{projectId}/status/{status}` | Authenticated | -- | `PageResponse<TechDebtItemResponse>` |
+| 104 | GET | `/api/v1/tech-debt/project/{projectId}/category/{category}` | Authenticated | -- | `PageResponse<TechDebtItemResponse>` |
+| 105 | PUT | `/api/v1/tech-debt/{itemId}/status` | Authenticated | `UpdateTechDebtStatusRequest` | `TechDebtItemResponse` |
+| 106 | DELETE | `/api/v1/tech-debt/{itemId}` | Authenticated | -- | 204 |
+| 107 | GET | `/api/v1/tech-debt/project/{projectId}/summary` | Authenticated | -- | `Map<String,Object>` |
+| 108 | POST | `/api/v1/dependencies/scans` | Authenticated | `CreateDependencyScanRequest` | `DependencyScanResponse` (201) |
+| 109 | GET | `/api/v1/dependencies/scans/{scanId}` | Authenticated | -- | `DependencyScanResponse` |
+| 110 | GET | `/api/v1/dependencies/scans/project/{projectId}` | Authenticated | -- | `PageResponse<DependencyScanResponse>` |
+| 111 | GET | `/api/v1/dependencies/scans/project/{projectId}/latest` | Authenticated | -- | `DependencyScanResponse` |
+| 112 | POST | `/api/v1/dependencies/vulnerabilities` | Authenticated | `CreateVulnerabilityRequest` | `VulnerabilityResponse` (201) |
+| 113 | POST | `/api/v1/dependencies/vulnerabilities/batch` | Authenticated | `List<CreateVulnerabilityRequest>` | `List<VulnerabilityResponse>` (201) |
+| 114 | GET | `/api/v1/dependencies/vulnerabilities/scan/{scanId}` | Authenticated | -- | `PageResponse<VulnerabilityResponse>` |
+| 115 | GET | `/api/v1/dependencies/vulnerabilities/scan/{scanId}/severity/{severity}` | Authenticated | -- | `PageResponse<VulnerabilityResponse>` |
+| 116 | GET | `/api/v1/dependencies/vulnerabilities/scan/{scanId}/open` | Authenticated | -- | `PageResponse<VulnerabilityResponse>` |
+| 117 | PUT | `/api/v1/dependencies/vulnerabilities/{vulnerabilityId}/status` | Authenticated | -- | `VulnerabilityResponse` |
+| 118 | POST | `/api/v1/health-monitor/schedules` | Authenticated | `CreateHealthScheduleRequest` | `HealthScheduleResponse` (201) |
+| 119 | GET | `/api/v1/health-monitor/schedules/project/{projectId}` | Authenticated | -- | `List<HealthScheduleResponse>` |
+| 120 | PUT | `/api/v1/health-monitor/schedules/{scheduleId}` | Authenticated | -- | `HealthScheduleResponse` |
+| 121 | DELETE | `/api/v1/health-monitor/schedules/{scheduleId}` | Authenticated | -- | 204 |
+| 122 | POST | `/api/v1/health-monitor/snapshots` | Authenticated | `CreateHealthSnapshotRequest` | `HealthSnapshotResponse` (201) |
+| 123 | GET | `/api/v1/health-monitor/snapshots/project/{projectId}` | Authenticated | -- | `PageResponse<HealthSnapshotResponse>` |
+| 124 | GET | `/api/v1/health-monitor/snapshots/project/{projectId}/latest` | Authenticated | -- | `HealthSnapshotResponse` |
+| 125 | GET | `/api/v1/health-monitor/snapshots/project/{projectId}/trend` | Authenticated | -- | `List<HealthSnapshotResponse>` |
+| 126 | GET | `/api/v1/metrics/project/{projectId}` | Authenticated | -- | `ProjectMetricsResponse` |
+| 127 | GET | `/api/v1/metrics/team/{teamId}` | Authenticated | -- | `TeamMetricsResponse` |
+| 128 | GET | `/api/v1/metrics/project/{projectId}/trend` | Authenticated | -- | `List<HealthSnapshotResponse>` |
+| 129 | POST | `/api/v1/integrations/github/{teamId}` | Authenticated | `CreateGitHubConnectionRequest` | `GitHubConnectionResponse` (201) |
+| 130 | GET | `/api/v1/integrations/github/{teamId}` | Authenticated | -- | `List<GitHubConnectionResponse>` |
+| 131 | GET | `/api/v1/integrations/github/{teamId}/{connectionId}` | Authenticated | -- | `GitHubConnectionResponse` |
+| 132 | DELETE | `/api/v1/integrations/github/{teamId}/{connectionId}` | Authenticated | -- | 204 |
+| 133 | POST | `/api/v1/integrations/jira/{teamId}` | Authenticated | `CreateJiraConnectionRequest` | `JiraConnectionResponse` (201) |
+| 134 | GET | `/api/v1/integrations/jira/{teamId}` | Authenticated | -- | `List<JiraConnectionResponse>` |
+| 135 | GET | `/api/v1/integrations/jira/{teamId}/{connectionId}` | Authenticated | -- | `JiraConnectionResponse` |
+| 136 | DELETE | `/api/v1/integrations/jira/{teamId}/{connectionId}` | Authenticated | -- | 204 |
+| 137 | POST | `/api/v1/reports/job/{jobId}/agent/{agentType}` | Authenticated | `String` (markdown) | `Map<String,String>` |
+| 138 | POST | `/api/v1/reports/job/{jobId}/summary` | Authenticated | `String` (markdown) | `Map<String,String>` |
+| 139 | GET | `/api/v1/reports/download` | Authenticated | `?key=` | `String` (presigned URL) |
+| 140 | POST | `/api/v1/reports/job/{jobId}/spec` | Authenticated | `MultipartFile` | `Map<String,String>` |
+| 141 | GET | `/api/v1/notifications/preferences` | Authenticated | -- | `NotificationPreferenceResponse` |
 
-**Total: 141 endpoints across 17 controllers.**
+**Total: 141 endpoints across 18 controllers (17 domain + HealthController).**
+
+**Summary by auth level:**
+- Public (no auth): 4 endpoints (register, login, refresh, health)
+- Authenticated: 129 endpoints
+- ADMIN/OWNER only: 8 endpoints (admin management + user activation/deactivation)
 
 ---
 
@@ -1426,6 +1538,8 @@ The `openapi.yaml` file is generated alongside this audit when the application i
 
 ## 21. Quality Scorecard
 
+<!-- QUALITY SCORECARD SUMMARY -->
+
 ### Security (10 checks, max 20)
 
 | ID | Check | Evidence | Score |
@@ -1564,6 +1678,8 @@ No Redis or caching layer detected in this project. Token blacklist uses in-memo
 
 ## 25. Environment Variables
 
+<!-- ENVIRONMENT VARIABLE INVENTORY -->
+
 ### Required in Production
 
 | Variable | Source | Purpose |
@@ -1606,6 +1722,8 @@ No Redis or caching layer detected in this project. Token blacklist uses in-memo
 ---
 
 ## 26. Inter-Service Communication
+
+<!-- SERVICE DEPENDENCY MAP -->
 
 ### Outbound
 
