@@ -13,6 +13,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,6 +41,8 @@ import java.util.UUID;
 @Transactional
 public class DependencyService {
 
+    private static final Logger log = LoggerFactory.getLogger(DependencyService.class);
+
     private final DependencyScanRepository dependencyScanRepository;
     private final DependencyVulnerabilityRepository vulnerabilityRepository;
     private final ProjectRepository projectRepository;
@@ -55,6 +59,7 @@ public class DependencyService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public DependencyScanResponse createScan(CreateDependencyScanRequest request) {
+        log.debug("createScan called with projectId={}, manifestFile={}", request.projectId(), request.manifestFile());
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -70,6 +75,7 @@ public class DependencyService {
                 .build();
 
         scan = dependencyScanRepository.save(scan);
+        log.info("Created dependency scan id={} for projectId={}, totalDeps={}, vulnerable={}", scan.getId(), request.projectId(), request.totalDependencies(), request.vulnerableCount());
         return mapScanToResponse(scan);
     }
 
@@ -83,6 +89,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public DependencyScanResponse getScan(UUID scanId) {
+        log.debug("getScan called with scanId={}", scanId);
         DependencyScan scan = dependencyScanRepository.findById(scanId)
                 .orElseThrow(() -> new EntityNotFoundException("Dependency scan not found"));
         verifyTeamMembership(scan.getProject().getTeam().getId());
@@ -100,6 +107,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public PageResponse<DependencyScanResponse> getScansForProject(UUID projectId, Pageable pageable) {
+        log.debug("getScansForProject called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -120,6 +128,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public DependencyScanResponse getLatestScan(UUID projectId) {
+        log.debug("getLatestScan called with projectId={}", projectId);
         return dependencyScanRepository.findFirstByProjectIdOrderByCreatedAtDesc(projectId)
                 .map(this::mapScanToResponse)
                 .orElseThrow(() -> new EntityNotFoundException("No dependency scans found for project"));
@@ -135,6 +144,7 @@ public class DependencyService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public VulnerabilityResponse addVulnerability(CreateVulnerabilityRequest request) {
+        log.debug("addVulnerability called with scanId={}, cveId={}, severity={}", request.scanId(), request.cveId(), request.severity());
         DependencyScan scan = dependencyScanRepository.findById(request.scanId())
                 .orElseThrow(() -> new EntityNotFoundException("Dependency scan not found"));
         verifyTeamMembership(scan.getProject().getTeam().getId());
@@ -151,6 +161,7 @@ public class DependencyService {
                 .build();
 
         vuln = vulnerabilityRepository.save(vuln);
+        log.info("Created vulnerability id={} for scanId={}, cveId={}, severity={}", vuln.getId(), request.scanId(), request.cveId(), request.severity());
         return mapVulnToResponse(vuln);
     }
 
@@ -166,6 +177,7 @@ public class DependencyService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public List<VulnerabilityResponse> addVulnerabilities(List<CreateVulnerabilityRequest> requests) {
+        log.debug("addVulnerabilities called with count={}", requests.size());
         if (requests.isEmpty()) return List.of();
 
         UUID firstScanId = requests.get(0).scanId();
@@ -192,6 +204,7 @@ public class DependencyService {
                 .toList();
 
         vulns = vulnerabilityRepository.saveAll(vulns);
+        log.info("Created {} vulnerabilities for scanId={}", vulns.size(), firstScanId);
         return vulns.stream().map(this::mapVulnToResponse).toList();
     }
 
@@ -206,6 +219,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public PageResponse<VulnerabilityResponse> getVulnerabilities(UUID scanId, Pageable pageable) {
+        log.debug("getVulnerabilities called with scanId={}", scanId);
         DependencyScan scan = dependencyScanRepository.findById(scanId)
                 .orElseThrow(() -> new EntityNotFoundException("Dependency scan not found"));
         verifyTeamMembership(scan.getProject().getTeam().getId());
@@ -227,6 +241,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public PageResponse<VulnerabilityResponse> getVulnerabilitiesBySeverity(UUID scanId, Severity severity, Pageable pageable) {
+        log.debug("getVulnerabilitiesBySeverity called with scanId={}, severity={}", scanId, severity);
         Page<DependencyVulnerability> page = vulnerabilityRepository.findByScanIdAndSeverity(scanId, severity, pageable);
         List<VulnerabilityResponse> content = page.getContent().stream()
                 .map(this::mapVulnToResponse)
@@ -244,6 +259,7 @@ public class DependencyService {
      */
     @Transactional(readOnly = true)
     public PageResponse<VulnerabilityResponse> getOpenVulnerabilities(UUID scanId, Pageable pageable) {
+        log.debug("getOpenVulnerabilities called with scanId={}", scanId);
         Page<DependencyVulnerability> page = vulnerabilityRepository.findByScanIdAndStatus(scanId, VulnerabilityStatus.OPEN, pageable);
         List<VulnerabilityResponse> content = page.getContent().stream()
                 .map(this::mapVulnToResponse)
@@ -262,11 +278,14 @@ public class DependencyService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public VulnerabilityResponse updateVulnerabilityStatus(UUID vulnerabilityId, VulnerabilityStatus status) {
+        log.debug("updateVulnerabilityStatus called with vulnerabilityId={}, status={}", vulnerabilityId, status);
         DependencyVulnerability vuln = vulnerabilityRepository.findById(vulnerabilityId)
                 .orElseThrow(() -> new EntityNotFoundException("Vulnerability not found"));
         verifyTeamMembership(vuln.getScan().getProject().getTeam().getId());
+        VulnerabilityStatus oldStatus = vuln.getStatus();
         vuln.setStatus(status);
         vuln = vulnerabilityRepository.save(vuln);
+        log.info("Updated vulnerability id={} status from {} to {}", vulnerabilityId, oldStatus, status);
         return mapVulnToResponse(vuln);
     }
 

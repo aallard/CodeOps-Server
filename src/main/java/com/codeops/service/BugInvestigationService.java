@@ -11,6 +11,8 @@ import com.codeops.repository.TeamMemberRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,8 @@ import java.util.UUID;
 @Transactional
 public class BugInvestigationService {
 
+    private static final Logger log = LoggerFactory.getLogger(BugInvestigationService.class);
+
     private final BugInvestigationRepository bugInvestigationRepository;
     private final QaJobRepository qaJobRepository;
     private final TeamMemberRepository teamMemberRepository;
@@ -51,6 +55,7 @@ public class BugInvestigationService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public BugInvestigationResponse createInvestigation(CreateBugInvestigationRequest request) {
+        log.debug("createInvestigation called with jobId={}, jiraKey={}", request.jobId(), request.jiraKey());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -69,6 +74,7 @@ public class BugInvestigationService {
                 .build();
 
         investigation = bugInvestigationRepository.save(investigation);
+        log.info("Created bug investigation id={} for jobId={}, jiraKey={}", investigation.getId(), request.jobId(), request.jiraKey());
         return mapToResponse(investigation);
     }
 
@@ -82,6 +88,7 @@ public class BugInvestigationService {
      */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigation(UUID investigationId) {
+        log.debug("getInvestigation called with investigationId={}", investigationId);
         BugInvestigation investigation = bugInvestigationRepository.findById(investigationId)
                 .orElseThrow(() -> new EntityNotFoundException("Bug investigation not found"));
         verifyTeamMembership(investigation.getJob().getProject().getTeam().getId());
@@ -98,6 +105,7 @@ public class BugInvestigationService {
      */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigationByJob(UUID jobId) {
+        log.debug("getInvestigationByJob called with jobId={}", jobId);
         BugInvestigation investigation = bugInvestigationRepository.findByJobId(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Bug investigation not found for job"));
         verifyTeamMembership(investigation.getJob().getProject().getTeam().getId());
@@ -114,6 +122,7 @@ public class BugInvestigationService {
      */
     @Transactional(readOnly = true)
     public BugInvestigationResponse getInvestigationByJiraKey(String jiraKey) {
+        log.debug("getInvestigationByJiraKey called with jiraKey={}", jiraKey);
         BugInvestigation investigation = bugInvestigationRepository.findByJiraKey(jiraKey)
                 .orElseThrow(() -> new EntityNotFoundException("Bug investigation not found for Jira key"));
         verifyTeamMembership(investigation.getJob().getProject().getTeam().getId());
@@ -133,6 +142,7 @@ public class BugInvestigationService {
      * @throws AccessDeniedException if the current user is not a member of the associated team
      */
     public BugInvestigationResponse updateInvestigation(UUID investigationId, UpdateBugInvestigationRequest request) {
+        log.debug("updateInvestigation called with investigationId={}", investigationId);
         BugInvestigation investigation = bugInvestigationRepository.findById(investigationId)
                 .orElseThrow(() -> new EntityNotFoundException("Bug investigation not found"));
         verifyTeamMembership(investigation.getJob().getProject().getTeam().getId());
@@ -144,6 +154,7 @@ public class BugInvestigationService {
         if (request.fixTasksCreatedInJira() != null) investigation.setFixTasksCreatedInJira(request.fixTasksCreatedInJira());
 
         investigation = bugInvestigationRepository.save(investigation);
+        log.info("Updated bug investigation id={}", investigationId);
         return mapToResponse(investigation);
     }
 
@@ -158,6 +169,7 @@ public class BugInvestigationService {
      * @return the S3 storage key where the RCA was uploaded
      */
     public String uploadRca(UUID jobId, String rcaMd) {
+        log.debug("uploadRca called with jobId={}", jobId);
         String key = AppConstants.S3_REPORTS + jobId + "/rca.md";
         s3StorageService.upload(key, rcaMd.getBytes(StandardCharsets.UTF_8), "text/markdown");
         return key;

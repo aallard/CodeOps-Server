@@ -15,6 +15,8 @@ import com.codeops.repository.TeamMemberRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,6 +45,8 @@ import java.util.UUID;
 @Transactional
 public class ComplianceService {
 
+    private static final Logger log = LoggerFactory.getLogger(ComplianceService.class);
+
     private final ComplianceItemRepository complianceItemRepository;
     private final SpecificationRepository specificationRepository;
     private final QaJobRepository qaJobRepository;
@@ -57,6 +61,7 @@ public class ComplianceService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public SpecificationResponse createSpecification(CreateSpecificationRequest request) {
+        log.debug("createSpecification called with jobId={}", request.jobId());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -69,6 +74,7 @@ public class ComplianceService {
                 .build();
 
         spec = specificationRepository.save(spec);
+        log.info("Created specification id={} for jobId={}", spec.getId(), request.jobId());
         return mapSpecToResponse(spec);
     }
 
@@ -83,6 +89,7 @@ public class ComplianceService {
      */
     @Transactional(readOnly = true)
     public PageResponse<SpecificationResponse> getSpecificationsForJob(UUID jobId, Pageable pageable) {
+        log.debug("getSpecificationsForJob called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -103,6 +110,7 @@ public class ComplianceService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public ComplianceItemResponse createComplianceItem(CreateComplianceItemRequest request) {
+        log.debug("createComplianceItem called with jobId={}, status={}", request.jobId(), request.status());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -118,6 +126,7 @@ public class ComplianceService {
                 .build();
 
         item = complianceItemRepository.save(item);
+        log.info("Created compliance item id={} for jobId={} with status={}", item.getId(), request.jobId(), request.status());
         return mapItemToResponse(item);
     }
 
@@ -131,6 +140,7 @@ public class ComplianceService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public List<ComplianceItemResponse> createComplianceItems(List<CreateComplianceItemRequest> requests) {
+        log.debug("createComplianceItems called with count={}", requests.size());
         if (requests.isEmpty()) return List.of();
 
         UUID firstJobId = requests.get(0).jobId();
@@ -156,6 +166,7 @@ public class ComplianceService {
                 .toList();
 
         items = complianceItemRepository.saveAll(items);
+        log.info("Created {} compliance items for jobId={}", items.size(), firstJobId);
         return items.stream().map(this::mapItemToResponse).toList();
     }
 
@@ -170,6 +181,7 @@ public class ComplianceService {
      */
     @Transactional(readOnly = true)
     public PageResponse<ComplianceItemResponse> getComplianceItemsForJob(UUID jobId, Pageable pageable) {
+        log.debug("getComplianceItemsForJob called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -193,6 +205,7 @@ public class ComplianceService {
      */
     @Transactional(readOnly = true)
     public PageResponse<ComplianceItemResponse> getComplianceItemsByStatus(UUID jobId, ComplianceStatus status, Pageable pageable) {
+        log.debug("getComplianceItemsByStatus called with jobId={}, status={}", jobId, status);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -219,6 +232,7 @@ public class ComplianceService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getComplianceSummary(UUID jobId) {
+        log.debug("getComplianceSummary called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -230,6 +244,7 @@ public class ComplianceService {
         int total = met + partial + missing + notApplicable;
         double score = total > 0 ? ((double) (met * 100 + partial * 50) / (total * 100)) * 100 : 0;
 
+        log.info("Compliance summary for jobId={}: total={}, met={}, partial={}, missing={}, score={}", jobId, total, met, partial, missing, Math.round(score));
         return Map.of(
                 "met", met,
                 "partial", partial,

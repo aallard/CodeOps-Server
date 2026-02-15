@@ -12,6 +12,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,8 @@ import java.util.UUID;
 @Transactional
 public class JiraConnectionService {
 
+    private static final Logger log = LoggerFactory.getLogger(JiraConnectionService.class);
+
     private final JiraConnectionRepository jiraConnectionRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final EncryptionService encryptionService;
@@ -56,6 +60,7 @@ public class JiraConnectionService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the team
      */
     public JiraConnectionResponse createConnection(UUID teamId, CreateJiraConnectionRequest request) {
+        log.debug("createConnection called with teamId={}, name={}, instanceUrl={}", teamId, request.name(), request.instanceUrl());
         verifyTeamAdmin(teamId);
 
         String encryptedToken = encryptionService.encrypt(request.apiToken());
@@ -70,6 +75,7 @@ public class JiraConnectionService {
                 .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
         connection = jiraConnectionRepository.save(connection);
+        log.info("Created Jira connection id={} for teamId={}, name={}", connection.getId(), teamId, request.name());
 
         return mapToResponse(connection);
     }
@@ -83,6 +89,7 @@ public class JiraConnectionService {
      */
     @Transactional(readOnly = true)
     public List<JiraConnectionResponse> getConnections(UUID teamId) {
+        log.debug("getConnections called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         return jiraConnectionRepository.findByTeamIdAndIsActiveTrue(teamId).stream()
                 .map(this::mapToResponse)
@@ -99,6 +106,7 @@ public class JiraConnectionService {
      */
     @Transactional(readOnly = true)
     public JiraConnectionResponse getConnection(UUID connectionId) {
+        log.debug("getConnection called with connectionId={}", connectionId);
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
         verifyTeamMembership(connection.getTeam().getId());
@@ -116,11 +124,13 @@ public class JiraConnectionService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the connection's team
      */
     public void deleteConnection(UUID connectionId) {
+        log.debug("deleteConnection called with connectionId={}", connectionId);
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
         verifyTeamAdmin(connection.getTeam().getId());
         connection.setIsActive(false);
         jiraConnectionRepository.save(connection);
+        log.info("Soft-deleted Jira connection id={}", connectionId);
     }
 
     /**
@@ -136,6 +146,7 @@ public class JiraConnectionService {
      * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
      */
     public String getDecryptedApiToken(UUID connectionId) {
+        log.debug("getDecryptedApiToken called with connectionId={}", connectionId);
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
         UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -161,6 +172,7 @@ public class JiraConnectionService {
      * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
      */
     public JiraConnectionDetails getConnectionDetails(UUID connectionId) {
+        log.debug("getConnectionDetails called with connectionId={}", connectionId);
         JiraConnection connection = jiraConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Jira connection not found"));
         UUID currentUserId = SecurityUtils.getCurrentUserId();

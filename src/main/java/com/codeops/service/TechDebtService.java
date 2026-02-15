@@ -17,6 +17,8 @@ import com.codeops.entity.enums.DebtCategory;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,6 +49,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class TechDebtService {
 
+    private static final Logger log = LoggerFactory.getLogger(TechDebtService.class);
+
     private final TechDebtItemRepository techDebtItemRepository;
     private final ProjectRepository projectRepository;
     private final TeamMemberRepository teamMemberRepository;
@@ -65,6 +69,7 @@ public class TechDebtService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public TechDebtItemResponse createTechDebtItem(CreateTechDebtItemRequest request) {
+        log.debug("createTechDebtItem called with projectId={}, category={}", request.projectId(), request.category());
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -82,6 +87,7 @@ public class TechDebtService {
                 .build();
 
         item = techDebtItemRepository.save(item);
+        log.info("Created tech debt item id={} for projectId={}, category={}, impact={}", item.getId(), request.projectId(), request.category(), request.businessImpact());
         return mapToResponse(item);
     }
 
@@ -99,6 +105,7 @@ public class TechDebtService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public List<TechDebtItemResponse> createTechDebtItems(List<CreateTechDebtItemRequest> requests) {
+        log.debug("createTechDebtItems called with count={}", requests.size());
         if (requests.isEmpty()) return List.of();
 
         UUID firstProjectId = requests.get(0).projectId();
@@ -126,6 +133,7 @@ public class TechDebtService {
                 .toList();
 
         items = techDebtItemRepository.saveAll(items);
+        log.info("Created {} tech debt items for projectId={}", items.size(), firstProjectId);
         return items.stream().map(this::mapToResponse).toList();
     }
 
@@ -139,6 +147,7 @@ public class TechDebtService {
      */
     @Transactional(readOnly = true)
     public TechDebtItemResponse getTechDebtItem(UUID itemId) {
+        log.debug("getTechDebtItem called with itemId={}", itemId);
         TechDebtItem item = techDebtItemRepository.findById(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("Tech debt item not found"));
         verifyTeamMembership(item.getProject().getTeam().getId());
@@ -156,6 +165,7 @@ public class TechDebtService {
      */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtForProject(UUID projectId, Pageable pageable) {
+        log.debug("getTechDebtForProject called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -179,6 +189,7 @@ public class TechDebtService {
      */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtByStatus(UUID projectId, DebtStatus status, Pageable pageable) {
+        log.debug("getTechDebtByStatus called with projectId={}, status={}", projectId, status);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -202,6 +213,7 @@ public class TechDebtService {
      */
     @Transactional(readOnly = true)
     public PageResponse<TechDebtItemResponse> getTechDebtByCategory(UUID projectId, DebtCategory category, Pageable pageable) {
+        log.debug("getTechDebtByCategory called with projectId={}, category={}", projectId, category);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -226,16 +238,19 @@ public class TechDebtService {
      * @throws AccessDeniedException if the current user is not a member of the item's project team
      */
     public TechDebtItemResponse updateTechDebtStatus(UUID itemId, UpdateTechDebtStatusRequest request) {
+        log.debug("updateTechDebtStatus called with itemId={}, newStatus={}", itemId, request.status());
         TechDebtItem item = techDebtItemRepository.findById(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("Tech debt item not found"));
         verifyTeamMembership(item.getProject().getTeam().getId());
 
+        DebtStatus oldStatus = item.getStatus();
         item.setStatus(request.status());
         if (request.resolvedJobId() != null) {
             item.setResolvedJob(qaJobRepository.findById(request.resolvedJobId()).orElseThrow(() -> new EntityNotFoundException("Job not found")));
         }
 
         item = techDebtItemRepository.save(item);
+        log.info("Updated tech debt item id={} status from {} to {}", itemId, oldStatus, request.status());
         return mapToResponse(item);
     }
 
@@ -249,10 +264,12 @@ public class TechDebtService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role
      */
     public void deleteTechDebtItem(UUID itemId) {
+        log.debug("deleteTechDebtItem called with itemId={}", itemId);
         TechDebtItem item = techDebtItemRepository.findById(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("Tech debt item not found"));
         verifyTeamAdmin(item.getProject().getTeam().getId());
         techDebtItemRepository.delete(item);
+        log.info("Deleted tech debt item id={}", itemId);
     }
 
     /**
@@ -274,6 +291,7 @@ public class TechDebtService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getDebtSummary(UUID projectId) {
+        log.debug("getDebtSummary called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());

@@ -5,6 +5,8 @@ import com.codeops.entity.AgentRun;
 import com.codeops.entity.enums.AgentType;
 import com.codeops.repository.AgentRunRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -26,6 +28,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ReportStorageService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportStorageService.class);
+
     private final S3StorageService s3StorageService;
     private final AgentRunRepository agentRunRepository;
 
@@ -41,8 +45,10 @@ public class ReportStorageService {
      * @return the S3 key where the report was stored
      */
     public String uploadReport(UUID jobId, AgentType agentType, String markdownContent) {
+        log.debug("uploadReport called with jobId={}, agentType={}", jobId, agentType);
         String key = AppConstants.S3_REPORTS + jobId + "/" + agentType.name().toLowerCase() + "-report.md";
         s3StorageService.upload(key, markdownContent.getBytes(StandardCharsets.UTF_8), "text/markdown");
+        log.info("Uploaded report for jobId={}, agentType={}, key={}", jobId, agentType, key);
         return key;
     }
 
@@ -57,8 +63,10 @@ public class ReportStorageService {
      * @return the S3 key where the summary was stored
      */
     public String uploadSummaryReport(UUID jobId, String markdownContent) {
+        log.debug("uploadSummaryReport called with jobId={}", jobId);
         String key = AppConstants.S3_REPORTS + jobId + "/summary.md";
         s3StorageService.upload(key, markdownContent.getBytes(StandardCharsets.UTF_8), "text/markdown");
+        log.info("Uploaded summary report for jobId={}, key={}", jobId, key);
         return key;
     }
 
@@ -70,6 +78,7 @@ public class ReportStorageService {
      * @throws RuntimeException if the download fails
      */
     public String downloadReport(String s3Key) {
+        log.debug("downloadReport called with s3Key={}", s3Key);
         byte[] data = s3StorageService.download(s3Key);
         return new String(data, StandardCharsets.UTF_8);
     }
@@ -84,6 +93,7 @@ public class ReportStorageService {
      * @param jobId the ID of the QA job whose reports should be deleted
      */
     public void deleteReportsForJob(UUID jobId) {
+        log.debug("deleteReportsForJob called with jobId={}", jobId);
         List<AgentRun> runs = agentRunRepository.findByJobId(jobId);
         for (AgentRun run : runs) {
             if (run.getReportS3Key() != null) {
@@ -93,9 +103,10 @@ public class ReportStorageService {
         String summaryKey = AppConstants.S3_REPORTS + jobId + "/summary.md";
         try {
             s3StorageService.delete(summaryKey);
-        } catch (Exception ignored) {
-            // Summary may not exist
+        } catch (Exception e) {
+            log.warn("Summary report not found for jobId={}, skipping deletion", jobId);
         }
+        log.info("Deleted reports for jobId={}, agentRunCount={}", jobId, runs.size());
     }
 
     /**
@@ -110,8 +121,10 @@ public class ReportStorageService {
      * @return the S3 key where the specification was stored
      */
     public String uploadSpecification(UUID jobId, String fileName, byte[] fileData, String contentType) {
+        log.debug("uploadSpecification called with jobId={}, fileName={}, contentType={}", jobId, fileName, contentType);
         String key = AppConstants.S3_SPECS + jobId + "/" + fileName;
         s3StorageService.upload(key, fileData, contentType);
+        log.info("Uploaded specification for jobId={}, key={}", jobId, key);
         return key;
     }
 
@@ -123,6 +136,7 @@ public class ReportStorageService {
      * @throws RuntimeException if the download fails
      */
     public byte[] downloadSpecification(String s3Key) {
+        log.debug("downloadSpecification called with s3Key={}", s3Key);
         return s3StorageService.download(s3Key);
     }
 }

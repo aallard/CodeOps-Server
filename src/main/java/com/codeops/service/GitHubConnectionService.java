@@ -12,6 +12,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,8 @@ import java.util.UUID;
 @Transactional
 public class GitHubConnectionService {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubConnectionService.class);
+
     private final GitHubConnectionRepository gitHubConnectionRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final EncryptionService encryptionService;
@@ -56,6 +60,7 @@ public class GitHubConnectionService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the team
      */
     public GitHubConnectionResponse createConnection(UUID teamId, CreateGitHubConnectionRequest request) {
+        log.debug("createConnection called with teamId={}, name={}, authType={}", teamId, request.name(), request.authType());
         verifyTeamAdmin(teamId);
 
         String encryptedCredentials = encryptionService.encrypt(request.credentials());
@@ -70,6 +75,7 @@ public class GitHubConnectionService {
                 .createdBy(userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow(() -> new EntityNotFoundException("User not found")))
                 .build();
         connection = gitHubConnectionRepository.save(connection);
+        log.info("Created GitHub connection id={} for teamId={}, name={}", connection.getId(), teamId, request.name());
 
         return mapToResponse(connection);
     }
@@ -83,6 +89,7 @@ public class GitHubConnectionService {
      */
     @Transactional(readOnly = true)
     public List<GitHubConnectionResponse> getConnections(UUID teamId) {
+        log.debug("getConnections called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         return gitHubConnectionRepository.findByTeamIdAndIsActiveTrue(teamId).stream()
                 .map(this::mapToResponse)
@@ -99,6 +106,7 @@ public class GitHubConnectionService {
      */
     @Transactional(readOnly = true)
     public GitHubConnectionResponse getConnection(UUID connectionId) {
+        log.debug("getConnection called with connectionId={}", connectionId);
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));
         verifyTeamMembership(connection.getTeam().getId());
@@ -116,11 +124,13 @@ public class GitHubConnectionService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the connection's team
      */
     public void deleteConnection(UUID connectionId) {
+        log.debug("deleteConnection called with connectionId={}", connectionId);
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));
         verifyTeamAdmin(connection.getTeam().getId());
         connection.setIsActive(false);
         gitHubConnectionRepository.save(connection);
+        log.info("Soft-deleted GitHub connection id={}", connectionId);
     }
 
     /**
@@ -136,6 +146,7 @@ public class GitHubConnectionService {
      * @throws AccessDeniedException if the current user is not a team member or lacks ADMIN/OWNER role
      */
     public String getDecryptedCredentials(UUID connectionId) {
+        log.debug("getDecryptedCredentials called with connectionId={}", connectionId);
         GitHubConnection connection = gitHubConnectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("GitHub connection not found"));
         UUID currentUserId = SecurityUtils.getCurrentUserId();

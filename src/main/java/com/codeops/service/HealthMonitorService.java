@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -51,6 +53,8 @@ import java.util.UUID;
 @Transactional
 public class HealthMonitorService {
 
+    private static final Logger log = LoggerFactory.getLogger(HealthMonitorService.class);
+
     private final HealthScheduleRepository healthScheduleRepository;
     private final HealthSnapshotRepository healthSnapshotRepository;
     private final ProjectRepository projectRepository;
@@ -72,6 +76,7 @@ public class HealthMonitorService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public HealthScheduleResponse createSchedule(CreateHealthScheduleRequest request) {
+        log.debug("createSchedule called with projectId={}, scheduleType={}", request.projectId(), request.scheduleType());
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
@@ -87,6 +92,7 @@ public class HealthMonitorService {
                 .build();
 
         schedule = healthScheduleRepository.save(schedule);
+        log.info("Created health schedule id={} for projectId={}, type={}", schedule.getId(), request.projectId(), request.scheduleType());
         return mapScheduleToResponse(schedule);
     }
 
@@ -100,6 +106,7 @@ public class HealthMonitorService {
      */
     @Transactional(readOnly = true)
     public List<HealthScheduleResponse> getSchedulesForProject(UUID projectId) {
+        log.debug("getSchedulesForProject called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -118,6 +125,7 @@ public class HealthMonitorService {
      */
     @Transactional(readOnly = true)
     public List<HealthScheduleResponse> getActiveSchedules() {
+        log.debug("getActiveSchedules called");
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         List<UUID> teamIds = teamMemberRepository.findByUserId(currentUserId).stream()
                 .map(member -> member.getTeam().getId())
@@ -141,6 +149,7 @@ public class HealthMonitorService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public HealthScheduleResponse updateSchedule(UUID scheduleId, boolean isActive) {
+        log.debug("updateSchedule called with scheduleId={}, isActive={}", scheduleId, isActive);
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
         verifyTeamAdmin(schedule.getProject().getTeam().getId());
@@ -149,6 +158,7 @@ public class HealthMonitorService {
             schedule.setNextRunAt(calculateNextRun(schedule.getScheduleType(), schedule.getCronExpression()));
         }
         schedule = healthScheduleRepository.save(schedule);
+        log.info("Updated health schedule id={} isActive={}", scheduleId, isActive);
         return mapScheduleToResponse(schedule);
     }
 
@@ -160,10 +170,12 @@ public class HealthMonitorService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public void deleteSchedule(UUID scheduleId) {
+        log.debug("deleteSchedule called with scheduleId={}", scheduleId);
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
         verifyTeamAdmin(schedule.getProject().getTeam().getId());
         healthScheduleRepository.delete(schedule);
+        log.info("Deleted health schedule id={}", scheduleId);
     }
 
     /**
@@ -176,11 +188,13 @@ public class HealthMonitorService {
      * @throws EntityNotFoundException if the schedule is not found
      */
     public void markScheduleRun(UUID scheduleId) {
+        log.debug("markScheduleRun called with scheduleId={}", scheduleId);
         HealthSchedule schedule = healthScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new EntityNotFoundException("Health schedule not found"));
         schedule.setLastRunAt(Instant.now());
         schedule.setNextRunAt(calculateNextRun(schedule.getScheduleType(), schedule.getCronExpression()));
         healthScheduleRepository.save(schedule);
+        log.info("Marked schedule id={} as run, nextRunAt={}", scheduleId, schedule.getNextRunAt());
     }
 
     /**
@@ -197,6 +211,7 @@ public class HealthMonitorService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public HealthSnapshotResponse createSnapshot(CreateHealthSnapshotRequest request) {
+        log.debug("createSnapshot called with projectId={}, healthScore={}", request.projectId(), request.healthScore());
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -213,6 +228,7 @@ public class HealthMonitorService {
                 .build();
 
         snapshot = healthSnapshotRepository.save(snapshot);
+        log.info("Created health snapshot id={} for projectId={}, healthScore={}", snapshot.getId(), request.projectId(), request.healthScore());
         return mapSnapshotToResponse(snapshot);
     }
 
@@ -227,6 +243,7 @@ public class HealthMonitorService {
      */
     @Transactional(readOnly = true)
     public PageResponse<HealthSnapshotResponse> getSnapshots(UUID projectId, Pageable pageable) {
+        log.debug("getSnapshots called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -248,6 +265,7 @@ public class HealthMonitorService {
      */
     @Transactional(readOnly = true)
     public HealthSnapshotResponse getLatestSnapshot(UUID projectId) {
+        log.debug("getLatestSnapshot called with projectId={}", projectId);
         return healthSnapshotRepository.findFirstByProjectIdOrderByCapturedAtDesc(projectId)
                 .map(this::mapSnapshotToResponse)
                 .orElseThrow(() -> new EntityNotFoundException("No health snapshots found for project"));
@@ -268,6 +286,7 @@ public class HealthMonitorService {
      */
     @Transactional(readOnly = true)
     public List<HealthSnapshotResponse> getHealthTrend(UUID projectId, int limit) {
+        log.debug("getHealthTrend called with projectId={}, limit={}", projectId, limit);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -319,6 +338,7 @@ public class HealthMonitorService {
         try {
             return objectMapper.writeValueAsString(agentTypes);
         } catch (JsonProcessingException e) {
+            log.error("Failed to serialize agent types", e);
             throw new RuntimeException("Failed to serialize agent types", e);
         }
     }
@@ -328,6 +348,7 @@ public class HealthMonitorService {
         try {
             return objectMapper.readValue(json, new TypeReference<List<AgentType>>() {});
         } catch (JsonProcessingException e) {
+            log.warn("Failed to deserialize agent types JSON, returning empty list", e);
             return List.of();
         }
     }

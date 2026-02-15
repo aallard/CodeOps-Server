@@ -15,6 +15,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -45,6 +47,8 @@ import java.util.UUID;
 @Transactional
 public class RemediationTaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(RemediationTaskService.class);
+
     private final RemediationTaskRepository remediationTaskRepository;
     private final QaJobRepository qaJobRepository;
     private final UserRepository userRepository;
@@ -66,6 +70,7 @@ public class RemediationTaskService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public TaskResponse createTask(CreateTaskRequest request) {
+        log.debug("createTask called with jobId={}, title={}", request.jobId(), request.title());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -83,6 +88,7 @@ public class RemediationTaskService {
                 .build();
 
         task = remediationTaskRepository.save(task);
+        log.info("Created remediation task id={} for jobId={}, status={}", task.getId(), request.jobId(), task.getStatus());
         return mapToResponse(task);
     }
 
@@ -100,6 +106,7 @@ public class RemediationTaskService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public List<TaskResponse> createTasks(List<CreateTaskRequest> requests) {
+        log.debug("createTasks called with count={}", requests.size());
         if (requests.isEmpty()) return List.of();
 
         UUID firstJobId = requests.get(0).jobId();
@@ -127,6 +134,7 @@ public class RemediationTaskService {
                 .toList();
 
         tasks = remediationTaskRepository.saveAll(tasks);
+        log.info("Created {} remediation tasks for jobId={}", tasks.size(), firstJobId);
         return tasks.stream().map(this::mapToResponse).toList();
     }
 
@@ -141,6 +149,7 @@ public class RemediationTaskService {
      */
     @Transactional(readOnly = true)
     public PageResponse<TaskResponse> getTasksForJob(UUID jobId, Pageable pageable) {
+        log.debug("getTasksForJob called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -162,6 +171,7 @@ public class RemediationTaskService {
      */
     @Transactional(readOnly = true)
     public TaskResponse getTask(UUID taskId) {
+        log.debug("getTask called with taskId={}", taskId);
         RemediationTask task = remediationTaskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
         verifyTeamMembership(task.getJob().getProject().getTeam().getId());
@@ -180,6 +190,7 @@ public class RemediationTaskService {
      */
     @Transactional(readOnly = true)
     public PageResponse<TaskResponse> getTasksAssignedToUser(UUID userId, Pageable pageable) {
+        log.debug("getTasksAssignedToUser called with userId={}", userId);
         Page<RemediationTask> page = remediationTaskRepository.findByAssignedToId(userId, pageable);
         List<TaskResponse> content = page.getContent().stream()
                 .map(this::mapToResponse)
@@ -201,10 +212,12 @@ public class RemediationTaskService {
      * @throws AccessDeniedException if the current user is not a member of the task's team
      */
     public TaskResponse updateTask(UUID taskId, UpdateTaskRequest request) {
+        log.debug("updateTask called with taskId={}", taskId);
         RemediationTask task = remediationTaskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found"));
         verifyTeamMembership(task.getJob().getProject().getTeam().getId());
 
+        TaskStatus oldStatus = task.getStatus();
         if (request.status() != null) task.setStatus(request.status());
         if (request.assignedTo() != null) {
             task.setAssignedTo(userRepository.findById(request.assignedTo())
@@ -213,6 +226,12 @@ public class RemediationTaskService {
         if (request.jiraKey() != null) task.setJiraKey(request.jiraKey());
 
         task = remediationTaskRepository.save(task);
+        if (request.status() != null && request.status() != oldStatus) {
+            log.info("Updated remediation task id={} status from {} to {}", taskId, oldStatus, request.status());
+        }
+        if (request.assignedTo() != null) {
+            log.info("Assigned remediation task id={} to userId={}", taskId, request.assignedTo());
+        }
         return mapToResponse(task);
     }
 
@@ -228,6 +247,7 @@ public class RemediationTaskService {
      * @return the S3 key (or local storage path) where the prompt was stored
      */
     public String uploadTaskPrompt(UUID jobId, int taskNumber, String promptMd) {
+        log.debug("uploadTaskPrompt called with jobId={}, taskNumber={}", jobId, taskNumber);
         String key = "tasks/" + jobId + "/task-" + String.format("%03d", taskNumber) + ".md";
         s3StorageService.upload(key, promptMd.getBytes(StandardCharsets.UTF_8), "text/markdown");
         return key;
