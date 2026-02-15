@@ -16,6 +16,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -45,6 +47,8 @@ import java.util.UUID;
 @Transactional
 public class FindingService {
 
+    private static final Logger log = LoggerFactory.getLogger(FindingService.class);
+
     private final FindingRepository findingRepository;
     private final QaJobRepository qaJobRepository;
     private final UserRepository userRepository;
@@ -60,6 +64,7 @@ public class FindingService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public FindingResponse createFinding(CreateFindingRequest request) {
+        log.debug("createFinding called with jobId={}, severity={}", request.jobId(), request.severity());
         var job = qaJobRepository.findById(request.jobId())
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -80,6 +85,7 @@ public class FindingService {
                 .build();
 
         finding = findingRepository.save(finding);
+        log.info("Finding created: findingId={}, jobId={}, severity={}, agentType={}", finding.getId(), request.jobId(), request.severity(), request.agentType());
         return mapToResponse(finding);
     }
 
@@ -95,6 +101,7 @@ public class FindingService {
      * @throws AccessDeniedException if the current user is not a member of the job's team
      */
     public List<FindingResponse> createFindings(List<CreateFindingRequest> requests) {
+        log.debug("createFindings called with count={}", requests.size());
         if (requests.isEmpty()) return List.of();
 
         UUID firstJobId = requests.get(0).jobId();
@@ -125,6 +132,7 @@ public class FindingService {
                 .toList();
 
         findings = findingRepository.saveAll(findings);
+        log.info("Bulk findings created: count={}, jobId={}", findings.size(), firstJobId);
         return findings.stream().map(this::mapToResponse).toList();
     }
 
@@ -138,6 +146,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public FindingResponse getFinding(UUID findingId) {
+        log.debug("getFinding called with findingId={}", findingId);
         Finding finding = findingRepository.findById(findingId)
                 .orElseThrow(() -> new EntityNotFoundException("Finding not found"));
         verifyTeamMembership(finding.getJob().getProject().getTeam().getId());
@@ -155,6 +164,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsForJob(UUID jobId, Pageable pageable) {
+        log.debug("getFindingsForJob called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -179,6 +189,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndSeverity(UUID jobId, Severity severity, Pageable pageable) {
+        log.debug("getFindingsByJobAndSeverity called with jobId={}, severity={}", jobId, severity);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -202,6 +213,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndAgent(UUID jobId, AgentType agentType, Pageable pageable) {
+        log.debug("getFindingsByJobAndAgent called with jobId={}, agentType={}", jobId, agentType);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -225,6 +237,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public PageResponse<FindingResponse> getFindingsByJobAndStatus(UUID jobId, FindingStatus status, Pageable pageable) {
+        log.debug("getFindingsByJobAndStatus called with jobId={}, status={}", jobId, status);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -249,16 +262,19 @@ public class FindingService {
      * @throws AccessDeniedException if the current user is not a member of the associated team
      */
     public FindingResponse updateFindingStatus(UUID findingId, UpdateFindingStatusRequest request) {
+        log.debug("updateFindingStatus called with findingId={}, newStatus={}", findingId, request.status());
         Finding finding = findingRepository.findById(findingId)
                 .orElseThrow(() -> new EntityNotFoundException("Finding not found"));
         verifyTeamMembership(finding.getJob().getProject().getTeam().getId());
 
+        FindingStatus previousStatus = finding.getStatus();
         finding.setStatus(request.status());
         finding.setStatusChangedBy(userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found")));
         finding.setStatusChangedAt(Instant.now());
 
         finding = findingRepository.save(finding);
+        log.info("Finding status updated: findingId={}, {} -> {}", findingId, previousStatus, request.status());
         return mapToResponse(finding);
     }
 
@@ -275,8 +291,10 @@ public class FindingService {
      * @throws AccessDeniedException if the current user is not a member of the associated team
      */
     public List<FindingResponse> bulkUpdateFindingStatus(BulkUpdateFindingsRequest request) {
+        log.debug("bulkUpdateFindingStatus called with findingCount={}, newStatus={}", request.findingIds().size(), request.status());
         List<Finding> findings = findingRepository.findAllById(request.findingIds());
         if (findings.isEmpty()) {
+            log.warn("Bulk update found no findings for provided IDs");
             throw new EntityNotFoundException("No findings found for the provided IDs");
         }
 
@@ -298,6 +316,7 @@ public class FindingService {
         });
 
         findings = findingRepository.saveAll(findings);
+        log.info("Bulk finding status update: count={}, jobId={}, newStatus={}", findings.size(), firstJobId, request.status());
         return findings.stream().map(this::mapToResponse).toList();
     }
 
@@ -314,6 +333,7 @@ public class FindingService {
      */
     @Transactional(readOnly = true)
     public Map<Severity, Long> countFindingsBySeverity(UUID jobId) {
+        log.debug("countFindingsBySeverity called with jobId={}", jobId);
         var job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());

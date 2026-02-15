@@ -16,6 +16,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,8 @@ import java.util.UUID;
 @Transactional
 public class DirectiveService {
 
+    private static final Logger log = LoggerFactory.getLogger(DirectiveService.class);
+
     private final DirectiveRepository directiveRepository;
     private final ProjectDirectiveRepository projectDirectiveRepository;
     private final ProjectRepository projectRepository;
@@ -62,6 +66,7 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
      */
     public DirectiveResponse createDirective(CreateDirectiveRequest request) {
+        log.debug("createDirective called with name={}, scope={}, category={}", request.name(), request.scope(), request.category());
         if (request.scope() == DirectiveScope.TEAM && request.teamId() == null) {
             throw new IllegalArgumentException("teamId is required for TEAM scope directives");
         }
@@ -93,6 +98,7 @@ public class DirectiveService {
                 .build();
 
         directive = directiveRepository.save(directive);
+        log.info("Directive created: directiveId={}, name={}, scope={}", directive.getId(), directive.getName(), directive.getScope());
         return mapToResponse(directive);
     }
 
@@ -108,6 +114,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public DirectiveResponse getDirective(UUID directiveId) {
+        log.debug("getDirective called with directiveId={}", directiveId);
         Directive directive = directiveRepository.findById(directiveId)
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
         UUID teamId = directive.getTeam() != null ? directive.getTeam().getId()
@@ -127,6 +134,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesForTeam(UUID teamId) {
+        log.debug("getDirectivesForTeam called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         return directiveRepository.findByTeamId(teamId).stream()
                 .map(this::mapToResponse)
@@ -143,6 +151,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesForProject(UUID projectId) {
+        log.debug("getDirectivesForProject called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -161,6 +170,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getDirectivesByCategory(UUID teamId, DirectiveScope scope) {
+        log.debug("getDirectivesByCategory called with teamId={}, scope={}", teamId, scope);
         verifyTeamMembership(teamId);
         return directiveRepository.findByTeamIdAndScope(teamId, scope).stream()
                 .map(this::mapToResponse)
@@ -180,6 +190,7 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
      */
     public DirectiveResponse updateDirective(UUID directiveId, UpdateDirectiveRequest request) {
+        log.debug("updateDirective called with directiveId={}", directiveId);
         Directive directive = directiveRepository.findById(directiveId)
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
         verifyCreatorOrTeamAdmin(directive);
@@ -193,6 +204,7 @@ public class DirectiveService {
         if (request.category() != null) directive.setCategory(request.category());
 
         directive = directiveRepository.save(directive);
+        log.info("Directive updated: directiveId={}, name={}, version={}", directive.getId(), directive.getName(), directive.getVersion());
         return mapToResponse(directive);
     }
 
@@ -208,11 +220,13 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
      */
     public void deleteDirective(UUID directiveId) {
+        log.debug("deleteDirective called with directiveId={}", directiveId);
         Directive directive = directiveRepository.findById(directiveId)
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
         verifyCreatorOrTeamAdmin(directive);
         projectDirectiveRepository.deleteAll(projectDirectiveRepository.findByDirectiveId(directiveId));
         directiveRepository.delete(directive);
+        log.info("Directive deleted: directiveId={}, name={}", directiveId, directive.getName());
     }
 
     /**
@@ -229,6 +243,7 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
      */
     public ProjectDirectiveResponse assignToProject(AssignDirectiveRequest request) {
+        log.debug("assignToProject called with directiveId={}, projectId={}", request.directiveId(), request.projectId());
         Directive directive = directiveRepository.findById(request.directiveId())
                 .orElseThrow(() -> new EntityNotFoundException("Directive not found"));
         var project = projectRepository.findById(request.projectId())
@@ -237,6 +252,7 @@ public class DirectiveService {
 
         int count = projectDirectiveRepository.findByProjectId(request.projectId()).size();
         if (count >= AppConstants.MAX_DIRECTIVES_PER_PROJECT) {
+            log.warn("Directive assignment rejected: projectId={} at max directive capacity={}", request.projectId(), count);
             throw new IllegalArgumentException("Project has reached the maximum number of directives");
         }
 
@@ -247,6 +263,7 @@ public class DirectiveService {
                 .enabled(request.enabled())
                 .build();
         pd = projectDirectiveRepository.save(pd);
+        log.info("Directive assigned to project: directiveId={}, projectId={}, enabled={}", request.directiveId(), request.projectId(), request.enabled());
         return mapToProjectDirectiveResponse(pd, directive);
     }
 
@@ -259,10 +276,12 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
      */
     public void removeFromProject(UUID projectId, UUID directiveId) {
+        log.debug("removeFromProject called with projectId={}, directiveId={}", projectId, directiveId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
         projectDirectiveRepository.deleteByProjectIdAndDirectiveId(projectId, directiveId);
+        log.info("Directive unassigned from project: directiveId={}, projectId={}", directiveId, projectId);
     }
 
     /**
@@ -275,6 +294,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public List<ProjectDirectiveResponse> getProjectDirectives(UUID projectId) {
+        log.debug("getProjectDirectives called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -294,6 +314,7 @@ public class DirectiveService {
      */
     @Transactional(readOnly = true)
     public List<DirectiveResponse> getEnabledDirectivesForProject(UUID projectId) {
+        log.debug("getEnabledDirectivesForProject called with projectId={}", projectId);
         return projectDirectiveRepository.findByProjectIdAndEnabledTrue(projectId).stream()
                 .map(pd -> mapToResponse(pd.getDirective()))
                 .toList();
@@ -310,6 +331,7 @@ public class DirectiveService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role in the team
      */
     public ProjectDirectiveResponse toggleProjectDirective(UUID projectId, UUID directiveId, boolean enabled) {
+        log.debug("toggleProjectDirective called with projectId={}, directiveId={}, enabled={}", projectId, directiveId, enabled);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
@@ -318,6 +340,7 @@ public class DirectiveService {
                 .orElseThrow(() -> new EntityNotFoundException("Project directive assignment not found"));
         pd.setEnabled(enabled);
         pd = projectDirectiveRepository.save(pd);
+        log.info("Project directive toggled: projectId={}, directiveId={}, enabled={}", projectId, directiveId, enabled);
         return mapToProjectDirectiveResponse(pd, pd.getDirective());
     }
 

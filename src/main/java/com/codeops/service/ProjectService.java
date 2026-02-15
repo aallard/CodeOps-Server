@@ -15,6 +15,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,6 +49,8 @@ import java.util.UUID;
 @Transactional
 public class ProjectService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProjectService.class);
+
     private final ProjectRepository projectRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
@@ -73,10 +77,12 @@ public class ProjectService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the team
      */
     public ProjectResponse createProject(UUID teamId, CreateProjectRequest request) {
+        log.debug("createProject called with teamId={}, name={}", teamId, request.name());
         verifyTeamAdmin(teamId);
 
         long projectCount = projectRepository.countByTeamId(teamId);
         if (projectCount >= AppConstants.MAX_PROJECTS_PER_TEAM) {
+            log.warn("Project creation rejected: teamId={} at max project capacity={}", teamId, projectCount);
             throw new IllegalArgumentException("Team has reached the maximum number of projects");
         }
 
@@ -105,6 +111,7 @@ public class ProjectService {
         }
 
         project = projectRepository.save(project);
+        log.info("Project created: projectId={}, teamId={}, name={}", project.getId(), teamId, project.getName());
         return mapToProjectResponse(project);
     }
 
@@ -118,6 +125,7 @@ public class ProjectService {
      */
     @Transactional(readOnly = true)
     public ProjectResponse getProject(UUID projectId) {
+        log.debug("getProject called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -133,6 +141,7 @@ public class ProjectService {
      */
     @Transactional(readOnly = true)
     public List<ProjectResponse> getProjectsForTeam(UUID teamId) {
+        log.debug("getProjectsForTeam called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         return projectRepository.findByTeamIdAndIsArchivedFalse(teamId).stream()
                 .map(this::mapToProjectResponse)
@@ -150,6 +159,7 @@ public class ProjectService {
      */
     @Transactional(readOnly = true)
     public PageResponse<ProjectResponse> getAllProjectsForTeam(UUID teamId, boolean includeArchived, Pageable pageable) {
+        log.debug("getAllProjectsForTeam called with teamId={}, includeArchived={}", teamId, includeArchived);
         verifyTeamMembership(teamId);
         Page<Project> page = includeArchived
                 ? projectRepository.findByTeamId(teamId, pageable)
@@ -175,6 +185,7 @@ public class ProjectService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public ProjectResponse updateProject(UUID projectId, UpdateProjectRequest request) {
+        log.debug("updateProject called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
@@ -198,6 +209,7 @@ public class ProjectService {
         if (request.isArchived() != null) project.setIsArchived(request.isArchived());
 
         project = projectRepository.save(project);
+        log.info("Project updated: projectId={}, name={}", project.getId(), project.getName());
         return mapToProjectResponse(project);
     }
 
@@ -212,11 +224,13 @@ public class ProjectService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public void archiveProject(UUID projectId) {
+        log.debug("archiveProject called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
         project.setIsArchived(true);
         projectRepository.save(project);
+        log.info("Project archived: projectId={}, name={}", projectId, project.getName());
     }
 
     /**
@@ -227,11 +241,13 @@ public class ProjectService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public void unarchiveProject(UUID projectId) {
+        log.debug("unarchiveProject called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamAdmin(project.getTeam().getId());
         project.setIsArchived(false);
         projectRepository.save(project);
+        log.info("Project unarchived: projectId={}, name={}", projectId, project.getName());
     }
 
     /**
@@ -245,6 +261,7 @@ public class ProjectService {
      * @throws AccessDeniedException if the current user is not a team member or does not have OWNER role
      */
     public void deleteProject(UUID projectId) {
+        log.debug("deleteProject called with projectId={}", projectId);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
 
@@ -256,6 +273,7 @@ public class ProjectService {
         }
 
         projectRepository.delete(project);
+        log.info("Project deleted: projectId={}, name={}, deletedBy={}", projectId, project.getName(), currentUserId);
     }
 
     /**
@@ -269,11 +287,13 @@ public class ProjectService {
      * @throws EntityNotFoundException if no project exists with the given ID
      */
     public void updateHealthScore(UUID projectId, int score) {
+        log.debug("updateHealthScore called with projectId={}, score={}", projectId, score);
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         project.setHealthScore(score);
         project.setLastAuditAt(Instant.now());
         projectRepository.save(project);
+        log.info("Health score updated: projectId={}, score={}", projectId, score);
     }
 
     private ProjectResponse mapToProjectResponse(Project project) {
@@ -305,6 +325,7 @@ public class ProjectService {
         try {
             return objectMapper.writeValueAsString(labels);
         } catch (JsonProcessingException e) {
+            log.error("Failed to serialize labels: {}", labels, e);
             throw new RuntimeException("Failed to serialize labels", e);
         }
     }

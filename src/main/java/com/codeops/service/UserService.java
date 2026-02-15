@@ -7,6 +7,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class UserService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
 
     /**
@@ -40,6 +44,7 @@ public class UserService {
      * @throws EntityNotFoundException if no user exists with the given ID
      */
     public UserResponse getUserById(UUID id) {
+        log.debug("getUserById called with id={}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return mapToUserResponse(user);
@@ -53,6 +58,7 @@ public class UserService {
      * @throws EntityNotFoundException if no user exists with the given email
      */
     public UserResponse getUserByEmail(String email) {
+        log.debug("getUserByEmail called with email={}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return mapToUserResponse(user);
@@ -65,6 +71,7 @@ public class UserService {
      * @throws EntityNotFoundException if the current user is not found in the database
      */
     public UserResponse getCurrentUser() {
+        log.debug("getCurrentUser called");
         return getUserById(SecurityUtils.getCurrentUserId());
     }
 
@@ -82,6 +89,7 @@ public class UserService {
      */
     @Transactional
     public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
+        log.debug("updateUser called with userId={}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
@@ -98,6 +106,7 @@ public class UserService {
         }
 
         user = userRepository.save(user);
+        log.info("User updated: userId={}", userId);
         return mapToUserResponse(user);
     }
 
@@ -110,6 +119,7 @@ public class UserService {
      * @return a list of matching users as response DTOs, up to 20 results
      */
     public List<UserResponse> searchUsers(String query) {
+        log.debug("searchUsers called with query={}", query);
         return userRepository.findByDisplayNameContainingIgnoreCase(query).stream()
                 .limit(20)
                 .map(this::mapToUserResponse)
@@ -126,10 +136,12 @@ public class UserService {
      */
     @Transactional
     public void deactivateUser(UUID userId) {
+        log.debug("deactivateUser called with userId={}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         user.setIsActive(false);
         userRepository.save(user);
+        log.info("User deactivated: userId={}", userId);
     }
 
     /**
@@ -140,10 +152,12 @@ public class UserService {
      */
     @Transactional
     public void activateUser(UUID userId) {
+        log.debug("activateUser called with userId={}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         user.setIsActive(true);
         userRepository.save(user);
+        log.info("User activated: userId={}", userId);
     }
 
     private UserResponse mapToUserResponse(User user) {

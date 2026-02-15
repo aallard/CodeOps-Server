@@ -13,6 +13,8 @@ import com.codeops.repository.*;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -42,6 +44,8 @@ import java.util.UUID;
 @Transactional
 public class QaJobService {
 
+    private static final Logger log = LoggerFactory.getLogger(QaJobService.class);
+
     private final QaJobRepository qaJobRepository;
     private final AgentRunRepository agentRunRepository;
     private final FindingRepository findingRepository;
@@ -63,6 +67,7 @@ public class QaJobService {
      * @throws AccessDeniedException if the current user is not a member of the project's team
      */
     public JobResponse createJob(CreateJobRequest request) {
+        log.debug("createJob called with projectId={}, mode={}, name={}", request.projectId(), request.mode(), request.name());
         var project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -84,6 +89,7 @@ public class QaJobService {
                 .build();
 
         job = qaJobRepository.save(job);
+        log.info("QA job created: jobId={}, projectId={}, mode={}, status={}", job.getId(), request.projectId(), request.mode(), job.getStatus());
         return mapToJobResponse(job);
     }
 
@@ -97,6 +103,7 @@ public class QaJobService {
      */
     @Transactional(readOnly = true)
     public JobResponse getJob(UUID jobId) {
+        log.debug("getJob called with jobId={}", jobId);
         QaJob job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
@@ -114,6 +121,7 @@ public class QaJobService {
      */
     @Transactional(readOnly = true)
     public PageResponse<JobSummaryResponse> getJobsForProject(UUID projectId, Pageable pageable) {
+        log.debug("getJobsForProject called with projectId={}", projectId);
         var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         verifyTeamMembership(project.getTeam().getId());
@@ -135,6 +143,7 @@ public class QaJobService {
      */
     @Transactional(readOnly = true)
     public PageResponse<JobSummaryResponse> getJobsByUser(UUID userId, Pageable pageable) {
+        log.debug("getJobsByUser called with userId={}", userId);
         Page<QaJob> page = qaJobRepository.findByStartedById(userId, pageable);
         List<JobSummaryResponse> content = page.getContent().stream()
                 .map(this::mapToJobSummaryResponse)
@@ -158,9 +167,12 @@ public class QaJobService {
      * @throws AccessDeniedException if the current user is not a member of the job's project team
      */
     public JobResponse updateJob(UUID jobId, UpdateJobRequest request) {
+        log.debug("updateJob called with jobId={}", jobId);
         QaJob job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamMembership(job.getProject().getTeam().getId());
+
+        JobStatus previousStatus = job.getStatus();
 
         if (request.status() != null) job.setStatus(request.status());
         if (request.summaryMd() != null) job.setSummaryMd(request.summaryMd());
@@ -174,7 +186,14 @@ public class QaJobService {
         if (request.completedAt() != null) job.setCompletedAt(request.completedAt());
         if (request.startedAt() != null) job.setStartedAt(request.startedAt());
 
+        if (request.status() != null && request.status() != previousStatus) {
+            log.info("QA job status transition: jobId={}, {} -> {}", jobId, previousStatus, request.status());
+        }
+
         if (request.status() == JobStatus.COMPLETED && request.healthScore() != null) {
+            log.info("QA job completed: jobId={}, healthScore={}, totalFindings={}, critical={}, high={}, medium={}, low={}",
+                    jobId, request.healthScore(), request.totalFindings(), request.criticalCount(),
+                    request.highCount(), request.mediumCount(), request.lowCount());
             projectService.updateHealthScore(job.getProject().getId(), request.healthScore());
         }
 
@@ -192,10 +211,12 @@ public class QaJobService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the project's team
      */
     public void deleteJob(UUID jobId) {
+        log.debug("deleteJob called with jobId={}", jobId);
         QaJob job = qaJobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
         verifyTeamAdmin(job.getProject().getTeam().getId());
         qaJobRepository.delete(job);
+        log.info("QA job deleted: jobId={}, projectId={}", jobId, job.getProject().getId());
     }
 
     private JobResponse mapToJobResponse(QaJob job) {

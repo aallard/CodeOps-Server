@@ -21,6 +21,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +54,8 @@ import java.util.UUID;
 @Transactional
 public class TeamService {
 
+    private static final Logger log = LoggerFactory.getLogger(TeamService.class);
+
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
@@ -68,6 +72,7 @@ public class TeamService {
      * @throws EntityNotFoundException if the current user is not found
      */
     public TeamResponse createTeam(CreateTeamRequest request) {
+        log.debug("createTeam called with name={}", request.name());
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -88,6 +93,7 @@ public class TeamService {
                 .build();
         teamMemberRepository.save(member);
 
+        log.info("Team created: teamId={}, name={}, ownerId={}", team.getId(), team.getName(), currentUserId);
         return mapToTeamResponse(team);
     }
 
@@ -101,6 +107,7 @@ public class TeamService {
      */
     @Transactional(readOnly = true)
     public TeamResponse getTeam(UUID teamId) {
+        log.debug("getTeam called with teamId={}", teamId);
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new EntityNotFoundException("Team not found"));
         verifyTeamMembership(teamId);
@@ -114,6 +121,7 @@ public class TeamService {
      */
     @Transactional(readOnly = true)
     public List<TeamResponse> getTeamsForUser() {
+        log.debug("getTeamsForUser called");
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         return teamMemberRepository.findByUserId(currentUserId).stream()
                 .map(member -> mapToTeamResponse(member.getTeam()))
@@ -133,6 +141,7 @@ public class TeamService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role
      */
     public TeamResponse updateTeam(UUID teamId, UpdateTeamRequest request) {
+        log.debug("updateTeam called with teamId={}", teamId);
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new EntityNotFoundException("Team not found"));
         verifyTeamAdmin(teamId);
@@ -148,6 +157,7 @@ public class TeamService {
         }
 
         team = teamRepository.save(team);
+        log.info("Team updated: teamId={}, name={}", team.getId(), team.getName());
         return mapToTeamResponse(team);
     }
 
@@ -162,6 +172,7 @@ public class TeamService {
      * @throws AccessDeniedException if the current user is not the team owner
      */
     public void deleteTeam(UUID teamId) {
+        log.debug("deleteTeam called with teamId={}", teamId);
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new EntityNotFoundException("Team not found"));
 
@@ -171,6 +182,7 @@ public class TeamService {
         }
 
         teamRepository.delete(team);
+        log.info("Team deleted: teamId={}, name={}", teamId, team.getName());
     }
 
     /**
@@ -182,6 +194,7 @@ public class TeamService {
      */
     @Transactional(readOnly = true)
     public List<TeamMemberResponse> getTeamMembers(UUID teamId) {
+        log.debug("getTeamMembers called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         return teamMemberRepository.findByTeamId(teamId).stream()
                 .map(member -> mapToTeamMemberResponse(member, member.getUser()))
@@ -207,10 +220,13 @@ public class TeamService {
      * @throws AccessDeniedException if the current user lacks permission for the role change
      */
     public TeamMemberResponse updateMemberRole(UUID teamId, UUID userId, UpdateMemberRoleRequest request) {
+        log.debug("updateMemberRole called with teamId={}, userId={}, newRole={}", teamId, userId, request.role());
         verifyTeamAdmin(teamId);
 
         TeamMember member = teamMemberRepository.findByTeamIdAndUserId(teamId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Team member not found"));
+
+        TeamRole previousRole = member.getRole();
 
         if (member.getRole() == TeamRole.OWNER && request.role() != TeamRole.OWNER) {
             throw new IllegalArgumentException("Cannot change the owner's role directly");
@@ -231,10 +247,12 @@ public class TeamService {
                     .orElseThrow(() -> new EntityNotFoundException("Team not found"));
             team.setOwner(member.getUser());
             teamRepository.save(team);
+            log.info("Ownership transferred: teamId={}, newOwnerId={}, previousOwnerId={}", teamId, userId, currentUserId);
         }
 
         member.setRole(request.role());
         member = teamMemberRepository.save(member);
+        log.info("Member role changed: teamId={}, userId={}, previousRole={}, newRole={}", teamId, userId, previousRole, request.role());
         return mapToTeamMemberResponse(member, member.getUser());
     }
 
@@ -251,6 +269,7 @@ public class TeamService {
      * @throws AccessDeniedException if the current user lacks permission (non-self removal without admin role)
      */
     public void removeMember(UUID teamId, UUID userId) {
+        log.debug("removeMember called with teamId={}, userId={}", teamId, userId);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         boolean isSelfRemoval = currentUserId.equals(userId);
 
@@ -266,6 +285,7 @@ public class TeamService {
         }
 
         teamMemberRepository.delete(member);
+        log.info("Member removed: teamId={}, userId={}, selfRemoval={}", teamId, userId, isSelfRemoval);
     }
 
     /**
@@ -286,10 +306,12 @@ public class TeamService {
      * @throws EntityNotFoundException if the team or inviting user is not found
      */
     public InvitationResponse inviteMember(UUID teamId, InviteMemberRequest request) {
+        log.debug("inviteMember called with teamId={}, email={}, role={}", teamId, request.email(), request.role());
         verifyTeamAdmin(teamId);
 
         long memberCount = teamMemberRepository.countByTeamId(teamId);
         if (memberCount >= AppConstants.MAX_TEAM_MEMBERS) {
+            log.warn("Invite rejected: teamId={} at max member capacity={}", teamId, memberCount);
             throw new IllegalArgumentException("Team has reached the maximum number of members");
         }
 
@@ -320,6 +342,7 @@ public class TeamService {
                 .build();
         invitation = invitationRepository.save(invitation);
 
+        log.info("Invitation created: invitationId={}, teamId={}, email={}, role={}", invitation.getId(), teamId, request.email(), request.role());
         return mapToInvitationResponse(invitation);
     }
 
@@ -338,16 +361,19 @@ public class TeamService {
      * @throws AccessDeniedException if the current user's email does not match the invitation
      */
     public TeamResponse acceptInvitation(String token) {
+        log.debug("acceptInvitation called");
         Invitation invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
         if (invitation.getStatus() != InvitationStatus.PENDING) {
+            log.warn("Invitation accept failed: invitationId={} status is {}", invitation.getId(), invitation.getStatus());
             throw new IllegalArgumentException("Invitation is no longer valid");
         }
 
         if (invitation.getExpiresAt().isBefore(Instant.now())) {
             invitation.setStatus(InvitationStatus.EXPIRED);
             invitationRepository.save(invitation);
+            log.warn("Invitation accept failed: invitationId={} has expired", invitation.getId());
             throw new IllegalArgumentException("Invitation has expired");
         }
 
@@ -370,6 +396,7 @@ public class TeamService {
         invitation.setStatus(InvitationStatus.ACCEPTED);
         invitationRepository.save(invitation);
 
+        log.info("Invitation accepted: invitationId={}, teamId={}, userId={}, role={}", invitation.getId(), invitation.getTeam().getId(), currentUserId, invitation.getRole());
         return mapToTeamResponse(invitation.getTeam());
     }
 
@@ -382,6 +409,7 @@ public class TeamService {
      */
     @Transactional(readOnly = true)
     public List<InvitationResponse> getTeamInvitations(UUID teamId) {
+        log.debug("getTeamInvitations called with teamId={}", teamId);
         verifyTeamAdmin(teamId);
         return invitationRepository.findByTeamIdAndStatus(teamId, InvitationStatus.PENDING).stream()
                 .map(this::mapToInvitationResponse)
@@ -396,11 +424,13 @@ public class TeamService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the invitation's team
      */
     public void cancelInvitation(UUID invitationId) {
+        log.debug("cancelInvitation called with invitationId={}", invitationId);
         Invitation invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
         verifyTeamAdmin(invitation.getTeam().getId());
         invitation.setStatus(InvitationStatus.EXPIRED);
         invitationRepository.save(invitation);
+        log.info("Invitation cancelled: invitationId={}, teamId={}", invitationId, invitation.getTeam().getId());
     }
 
     private TeamResponse mapToTeamResponse(Team team) {

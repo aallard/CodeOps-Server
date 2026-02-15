@@ -59,6 +59,7 @@ public class AuthService {
      * @throws IllegalArgumentException if the email is already registered or the password is too weak
      */
     public AuthResponse register(RegisterRequest request) {
+        log.debug("register called with email={}", request.email());
         if (userRepository.existsByEmail(request.email())) {
             log.warn("Registration attempt with existing email: {}", request.email());
             throw new IllegalArgumentException("Email already registered");
@@ -93,6 +94,7 @@ public class AuthService {
      * @throws IllegalArgumentException if credentials are invalid or the account is deactivated
      */
     public AuthResponse login(LoginRequest request) {
+        log.debug("login called with email={}", request.email());
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> {
                     log.warn("Login failed: unknown email {}", request.email());
@@ -132,19 +134,26 @@ public class AuthService {
      * @throws IllegalArgumentException if the refresh token is invalid, expired, or the account is deactivated
      */
     public AuthResponse refreshToken(RefreshTokenRequest request) {
+        log.debug("refreshToken called");
         if (!jwtTokenProvider.validateToken(request.refreshToken())) {
+            log.warn("Token refresh failed: invalid token");
             throw new IllegalArgumentException("Invalid refresh token");
         }
 
         if (!jwtTokenProvider.isRefreshToken(request.refreshToken())) {
+            log.warn("Token refresh failed: not a refresh token");
             throw new IllegalArgumentException("Invalid refresh token");
         }
 
         UUID userId = jwtTokenProvider.getUserIdFromToken(request.refreshToken());
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("Token refresh failed: user not found for userId={}", userId);
+                    return new IllegalArgumentException("User not found");
+                });
 
         if (!user.getIsActive()) {
+            log.warn("Token refresh failed: deactivated account userId={}", userId);
             throw new IllegalArgumentException("Account is deactivated");
         }
 
@@ -152,6 +161,7 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(user, roles);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
 
+        log.info("Token refreshed for userId={}", userId);
         return new AuthResponse(token, refreshToken, mapToUserResponse(user));
     }
 
@@ -167,6 +177,7 @@ public class AuthService {
      * @throws IllegalArgumentException if the current password is incorrect or the new password is too weak
      */
     public void changePassword(ChangePasswordRequest request) {
+        log.debug("changePassword called");
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));

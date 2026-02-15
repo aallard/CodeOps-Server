@@ -17,6 +17,8 @@ import com.codeops.repository.UserRepository;
 import com.codeops.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,6 +51,8 @@ import java.util.UUID;
 @Transactional
 public class PersonaService {
 
+    private static final Logger log = LoggerFactory.getLogger(PersonaService.class);
+
     private final PersonaRepository personaRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
@@ -71,6 +75,7 @@ public class PersonaService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role for TEAM-scoped personas
      */
     public PersonaResponse createPersona(CreatePersonaRequest request) {
+        log.debug("createPersona called with name={}, scope={}, agentType={}", request.name(), request.scope(), request.agentType());
         if (request.scope() == Scope.SYSTEM) {
             throw new IllegalArgumentException("Cannot create SYSTEM personas");
         }
@@ -104,6 +109,7 @@ public class PersonaService {
         }
 
         persona = personaRepository.save(persona);
+        log.info("Persona created: personaId={}, name={}, scope={}, agentType={}", persona.getId(), persona.getName(), persona.getScope(), persona.getAgentType());
         return mapToResponse(persona);
     }
 
@@ -119,6 +125,7 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public PersonaResponse getPersona(UUID personaId) {
+        log.debug("getPersona called with personaId={}", personaId);
         Persona persona = personaRepository.findById(personaId)
                 .orElseThrow(() -> new EntityNotFoundException("Persona not found"));
         if (persona.getTeam() != null) {
@@ -137,6 +144,7 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public PageResponse<PersonaResponse> getPersonasForTeam(UUID teamId, Pageable pageable) {
+        log.debug("getPersonasForTeam called with teamId={}", teamId);
         verifyTeamMembership(teamId);
         Page<Persona> page = personaRepository.findByTeamId(teamId, pageable);
         List<PersonaResponse> content = page.getContent().stream()
@@ -156,6 +164,7 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public List<PersonaResponse> getPersonasByAgentType(UUID teamId, AgentType agentType) {
+        log.debug("getPersonasByAgentType called with teamId={}, agentType={}", teamId, agentType);
         verifyTeamMembership(teamId);
         return personaRepository.findByTeamIdAndAgentType(teamId, agentType).stream()
                 .map(this::mapToResponse)
@@ -172,9 +181,13 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public PersonaResponse getDefaultPersona(UUID teamId, AgentType agentType) {
+        log.debug("getDefaultPersona called with teamId={}, agentType={}", teamId, agentType);
         return personaRepository.findByTeamIdAndAgentTypeAndIsDefaultTrue(teamId, agentType)
                 .map(this::mapToResponse)
-                .orElseThrow(() -> new EntityNotFoundException("No default persona found for agent type: " + agentType));
+                .orElseThrow(() -> {
+                    log.warn("No default persona found: teamId={}, agentType={}", teamId, agentType);
+                    return new EntityNotFoundException("No default persona found for agent type: " + agentType);
+                });
     }
 
     /**
@@ -185,6 +198,7 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public List<PersonaResponse> getPersonasByUser(UUID userId) {
+        log.debug("getPersonasByUser called with userId={}", userId);
         return personaRepository.findByCreatedById(userId).stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -200,6 +214,7 @@ public class PersonaService {
      */
     @Transactional(readOnly = true)
     public List<PersonaResponse> getSystemPersonas() {
+        log.debug("getSystemPersonas called");
         return personaRepository.findByScope(Scope.SYSTEM).stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -222,6 +237,7 @@ public class PersonaService {
      * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
      */
     public PersonaResponse updatePersona(UUID personaId, UpdatePersonaRequest request) {
+        log.debug("updatePersona called with personaId={}", personaId);
         Persona persona = personaRepository.findById(personaId)
                 .orElseThrow(() -> new EntityNotFoundException("Persona not found"));
         verifyCreatorOrTeamAdmin(persona);
@@ -243,6 +259,7 @@ public class PersonaService {
         }
 
         persona = personaRepository.save(persona);
+        log.info("Persona updated: personaId={}, name={}, version={}", persona.getId(), persona.getName(), persona.getVersion());
         return mapToResponse(persona);
     }
 
@@ -257,6 +274,7 @@ public class PersonaService {
      * @throws AccessDeniedException if the current user is neither the creator nor a team admin/owner
      */
     public void deletePersona(UUID personaId) {
+        log.debug("deletePersona called with personaId={}", personaId);
         Persona persona = personaRepository.findById(personaId)
                 .orElseThrow(() -> new EntityNotFoundException("Persona not found"));
         verifyCreatorOrTeamAdmin(persona);
@@ -264,6 +282,7 @@ public class PersonaService {
             throw new IllegalArgumentException("Cannot delete SYSTEM personas");
         }
         personaRepository.delete(persona);
+        log.info("Persona deleted: personaId={}, name={}", personaId, persona.getName());
     }
 
     /**
@@ -280,6 +299,7 @@ public class PersonaService {
      * @throws AccessDeniedException if the current user does not have OWNER or ADMIN role on the persona's team
      */
     public PersonaResponse setAsDefault(UUID personaId) {
+        log.debug("setAsDefault called with personaId={}", personaId);
         Persona persona = personaRepository.findById(personaId)
                 .orElseThrow(() -> new EntityNotFoundException("Persona not found"));
         if (persona.getAgentType() == null || persona.getTeam() == null) {
@@ -289,6 +309,7 @@ public class PersonaService {
         clearExistingDefault(persona.getTeam().getId(), persona.getAgentType());
         persona.setIsDefault(true);
         persona = personaRepository.save(persona);
+        log.info("Persona set as default: personaId={}, teamId={}, agentType={}", personaId, persona.getTeam().getId(), persona.getAgentType());
         return mapToResponse(persona);
     }
 
@@ -301,6 +322,7 @@ public class PersonaService {
      * @throws AccessDeniedException if the persona is team-scoped and the current user does not have OWNER or ADMIN role
      */
     public PersonaResponse removeDefault(UUID personaId) {
+        log.debug("removeDefault called with personaId={}", personaId);
         Persona persona = personaRepository.findById(personaId)
                 .orElseThrow(() -> new EntityNotFoundException("Persona not found"));
         if (persona.getTeam() != null) {
@@ -308,6 +330,7 @@ public class PersonaService {
         }
         persona.setIsDefault(false);
         persona = personaRepository.save(persona);
+        log.info("Persona default removed: personaId={}", personaId);
         return mapToResponse(persona);
     }
 
