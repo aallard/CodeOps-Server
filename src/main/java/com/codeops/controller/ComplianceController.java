@@ -13,6 +13,8 @@ import com.codeops.service.ComplianceService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,6 +42,8 @@ import java.util.UUID;
 @Tag(name = "Compliance")
 public class ComplianceController {
 
+    private static final Logger log = LoggerFactory.getLogger(ComplianceController.class);
+
     private final ComplianceService complianceService;
     private final AuditLogService auditLogService;
 
@@ -56,6 +60,7 @@ public class ComplianceController {
     @PostMapping("/specs")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SpecificationResponse> createSpecification(@Valid @RequestBody CreateSpecificationRequest request) {
+        log.debug("createSpecification called");
         SpecificationResponse response = complianceService.createSpecification(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "SPECIFICATION_CREATED", "SPECIFICATION", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -77,6 +82,7 @@ public class ComplianceController {
             @PathVariable UUID jobId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getSpecificationsForJob called with jobId={}", jobId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(complianceService.getSpecificationsForJob(jobId, pageable));
@@ -95,6 +101,7 @@ public class ComplianceController {
     @PostMapping("/items")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ComplianceItemResponse> createComplianceItem(@Valid @RequestBody CreateComplianceItemRequest request) {
+        log.debug("createComplianceItem called");
         ComplianceItemResponse response = complianceService.createComplianceItem(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "COMPLIANCE_ITEM_CREATED", "COMPLIANCE_ITEM", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -113,6 +120,7 @@ public class ComplianceController {
     @PostMapping("/items/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ComplianceItemResponse>> createComplianceItems(@Valid @RequestBody List<CreateComplianceItemRequest> requests) {
+        log.debug("createComplianceItems called with batchSize={}", requests.size());
         List<ComplianceItemResponse> responses = complianceService.createComplianceItems(requests);
         responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "COMPLIANCE_ITEM_CREATED", "COMPLIANCE_ITEM", r.id(), null));
         return ResponseEntity.status(201).body(responses);
@@ -134,6 +142,7 @@ public class ComplianceController {
             @PathVariable UUID jobId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getComplianceItemsForJob called with jobId={}", jobId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(complianceService.getComplianceItemsForJob(jobId, pageable));
@@ -157,6 +166,7 @@ public class ComplianceController {
             @PathVariable ComplianceStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getComplianceItemsByStatus called with jobId={}, status={}", jobId, status);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(complianceService.getComplianceItemsByStatus(jobId, status, pageable));
@@ -174,6 +184,7 @@ public class ComplianceController {
     @GetMapping("/summary/job/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getComplianceSummary(@PathVariable UUID jobId) {
+        log.debug("getComplianceSummary called with jobId={}", jobId);
         return ResponseEntity.ok(complianceService.getComplianceSummary(jobId));
     }
 }

@@ -6,6 +6,8 @@ import com.codeops.dto.response.TeamMetricsResponse;
 import com.codeops.service.MetricsService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @Tag(name = "Metrics")
 public class MetricsController {
 
+    private static final Logger log = LoggerFactory.getLogger(MetricsController.class);
+
     private final MetricsService metricsService;
 
     /**
@@ -42,6 +46,7 @@ public class MetricsController {
     @GetMapping("/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectMetricsResponse> getProjectMetrics(@PathVariable UUID projectId) {
+        log.debug("getProjectMetrics called with projectId={}", projectId);
         return ResponseEntity.ok(metricsService.getProjectMetrics(projectId));
     }
 
@@ -58,6 +63,7 @@ public class MetricsController {
     @GetMapping("/team/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TeamMetricsResponse> getTeamMetrics(@PathVariable UUID teamId) {
+        log.debug("getTeamMetrics called with teamId={}", teamId);
         return ResponseEntity.ok(metricsService.getTeamMetrics(teamId));
     }
 
@@ -77,6 +83,7 @@ public class MetricsController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<HealthSnapshotResponse>> getHealthTrend(@PathVariable UUID projectId,
                                                                         @RequestParam(defaultValue = "30") int days) {
+        log.debug("getHealthTrend called with projectId={}, days={}", projectId, days);
         return ResponseEntity.ok(metricsService.getHealthTrend(projectId, days));
     }
 }

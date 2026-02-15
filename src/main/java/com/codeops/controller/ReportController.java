@@ -4,6 +4,8 @@ import com.codeops.entity.enums.AgentType;
 import com.codeops.service.ReportStorageService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +37,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @Tag(name = "Reports")
 public class ReportController {
+
+    private static final Logger log = LoggerFactory.getLogger(ReportController.class);
 
     private final ReportStorageService reportStorageService;
 
@@ -75,6 +79,7 @@ public class ReportController {
             @PathVariable UUID jobId,
             @PathVariable AgentType agentType,
             @RequestBody String markdownContent) {
+        log.debug("uploadAgentReport called with jobId={}, agentType={}", jobId, agentType);
         String key = reportStorageService.uploadReport(jobId, agentType, markdownContent);
         return ResponseEntity.status(201).body(Map.of("s3Key", key));
     }
@@ -96,6 +101,7 @@ public class ReportController {
     public ResponseEntity<Map<String, String>> uploadSummaryReport(
             @PathVariable UUID jobId,
             @RequestBody String markdownContent) {
+        log.debug("uploadSummaryReport called with jobId={}", jobId);
         String key = reportStorageService.uploadSummaryReport(jobId, markdownContent);
         return ResponseEntity.status(201).body(Map.of("s3Key", key));
     }
@@ -117,6 +123,7 @@ public class ReportController {
     @GetMapping("/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> downloadReport(@RequestParam String s3Key) {
+        log.debug("downloadReport called with s3Key={}", s3Key);
         validateS3Key(s3Key);
         String content = reportStorageService.downloadReport(s3Key);
         return ResponseEntity.ok()
@@ -145,6 +152,7 @@ public class ReportController {
     public ResponseEntity<Map<String, String>> uploadSpecification(
             @PathVariable UUID jobId,
             @RequestParam("file") MultipartFile file) throws IOException {
+        log.debug("uploadSpecification called with jobId={}", jobId);
         if (file.getSize() > MAX_UPLOAD_SIZE) {
             throw new IllegalArgumentException("File too large (max 50MB)");
         }
@@ -178,6 +186,7 @@ public class ReportController {
     @GetMapping("/spec/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadSpecification(@RequestParam String s3Key) {
+        log.debug("downloadSpecification called with s3Key={}", s3Key);
         validateS3Key(s3Key);
         byte[] data = reportStorageService.downloadSpecification(s3Key);
         return ResponseEntity.ok()

@@ -14,6 +14,8 @@ import com.codeops.service.DependencyService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,6 +42,8 @@ import java.util.UUID;
 @Tag(name = "Dependencies")
 public class DependencyController {
 
+    private static final Logger log = LoggerFactory.getLogger(DependencyController.class);
+
     private final DependencyService dependencyService;
     private final AuditLogService auditLogService;
 
@@ -56,6 +60,7 @@ public class DependencyController {
     @PostMapping("/scans")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DependencyScanResponse> createScan(@Valid @RequestBody CreateDependencyScanRequest request) {
+        log.debug("createScan called");
         DependencyScanResponse response = dependencyService.createScan(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "DEPENDENCY_SCAN_CREATED", "DEPENDENCY_SCAN", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -72,6 +77,7 @@ public class DependencyController {
     @GetMapping("/scans/{scanId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DependencyScanResponse> getScan(@PathVariable UUID scanId) {
+        log.debug("getScan called with scanId={}", scanId);
         return ResponseEntity.ok(dependencyService.getScan(scanId));
     }
 
@@ -91,6 +97,7 @@ public class DependencyController {
             @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getScansForProject called with projectId={}", projectId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(dependencyService.getScansForProject(projectId, pageable));
@@ -107,6 +114,7 @@ public class DependencyController {
     @GetMapping("/scans/project/{projectId}/latest")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DependencyScanResponse> getLatestScan(@PathVariable UUID projectId) {
+        log.debug("getLatestScan called with projectId={}", projectId);
         return ResponseEntity.ok(dependencyService.getLatestScan(projectId));
     }
 
@@ -123,6 +131,7 @@ public class DependencyController {
     @PostMapping("/vulnerabilities")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<VulnerabilityResponse> addVulnerability(@Valid @RequestBody CreateVulnerabilityRequest request) {
+        log.debug("addVulnerability called");
         VulnerabilityResponse response = dependencyService.addVulnerability(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "VULNERABILITY_ADDED", "VULNERABILITY", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -141,6 +150,7 @@ public class DependencyController {
     @PostMapping("/vulnerabilities/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<VulnerabilityResponse>> addVulnerabilities(@Valid @RequestBody List<CreateVulnerabilityRequest> requests) {
+        log.debug("addVulnerabilities called with batchSize={}", requests.size());
         List<VulnerabilityResponse> responses = dependencyService.addVulnerabilities(requests);
         responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "VULNERABILITY_ADDED", "VULNERABILITY", r.id(), null));
         return ResponseEntity.status(201).body(responses);
@@ -162,6 +172,7 @@ public class DependencyController {
             @PathVariable UUID scanId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getVulnerabilities called with scanId={}", scanId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(dependencyService.getVulnerabilities(scanId, pageable));
@@ -185,6 +196,7 @@ public class DependencyController {
             @PathVariable Severity severity,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getVulnerabilitiesBySeverity called with scanId={}, severity={}", scanId, severity);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(dependencyService.getVulnerabilitiesBySeverity(scanId, severity, pageable));
@@ -206,6 +218,7 @@ public class DependencyController {
             @PathVariable UUID scanId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getOpenVulnerabilities called with scanId={}", scanId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(dependencyService.getOpenVulnerabilities(scanId, pageable));
@@ -226,6 +239,7 @@ public class DependencyController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<VulnerabilityResponse> updateVulnerabilityStatus(@PathVariable UUID vulnerabilityId,
                                                                             @RequestParam VulnerabilityStatus status) {
+        log.debug("updateVulnerabilityStatus called with vulnerabilityId={}, status={}", vulnerabilityId, status);
         VulnerabilityResponse response = dependencyService.updateVulnerabilityStatus(vulnerabilityId, status);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "VULNERABILITY_STATUS_UPDATED", "VULNERABILITY", vulnerabilityId, status.name());
         return ResponseEntity.ok(response);

@@ -11,6 +11,8 @@ import com.codeops.service.JiraConnectionService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +38,8 @@ import java.util.UUID;
 @Tag(name = "Integrations")
 public class IntegrationController {
 
+    private static final Logger log = LoggerFactory.getLogger(IntegrationController.class);
+
     private final GitHubConnectionService gitHubConnectionService;
     private final JiraConnectionService jiraConnectionService;
     private final AuditLogService auditLogService;
@@ -58,6 +62,7 @@ public class IntegrationController {
     public ResponseEntity<GitHubConnectionResponse> createGitHubConnection(
             @PathVariable UUID teamId,
             @Valid @RequestBody CreateGitHubConnectionRequest request) {
+        log.debug("createGitHubConnection called with teamId={}", teamId);
         GitHubConnectionResponse response = gitHubConnectionService.createConnection(teamId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "GITHUB_CONNECTION_CREATED", "GITHUB_CONNECTION", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -74,6 +79,7 @@ public class IntegrationController {
     @GetMapping("/github/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<GitHubConnectionResponse>> getGitHubConnections(@PathVariable UUID teamId) {
+        log.debug("getGitHubConnections called with teamId={}", teamId);
         return ResponseEntity.ok(gitHubConnectionService.getConnections(teamId));
     }
 
@@ -91,6 +97,7 @@ public class IntegrationController {
     public ResponseEntity<GitHubConnectionResponse> getGitHubConnection(
             @PathVariable UUID teamId,
             @PathVariable UUID connectionId) {
+        log.debug("getGitHubConnection called with teamId={}, connectionId={}", teamId, connectionId);
         return ResponseEntity.ok(gitHubConnectionService.getConnection(connectionId));
     }
 
@@ -110,6 +117,7 @@ public class IntegrationController {
     public ResponseEntity<Void> deleteGitHubConnection(
             @PathVariable UUID teamId,
             @PathVariable UUID connectionId) {
+        log.debug("deleteGitHubConnection called with teamId={}, connectionId={}", teamId, connectionId);
         gitHubConnectionService.deleteConnection(connectionId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "GITHUB_CONNECTION_DELETED", "GITHUB_CONNECTION", connectionId, null);
         return ResponseEntity.noContent().build();
@@ -133,6 +141,7 @@ public class IntegrationController {
     public ResponseEntity<JiraConnectionResponse> createJiraConnection(
             @PathVariable UUID teamId,
             @Valid @RequestBody CreateJiraConnectionRequest request) {
+        log.debug("createJiraConnection called with teamId={}", teamId);
         JiraConnectionResponse response = jiraConnectionService.createConnection(teamId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "JIRA_CONNECTION_CREATED", "JIRA_CONNECTION", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -149,6 +158,7 @@ public class IntegrationController {
     @GetMapping("/jira/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<JiraConnectionResponse>> getJiraConnections(@PathVariable UUID teamId) {
+        log.debug("getJiraConnections called with teamId={}", teamId);
         return ResponseEntity.ok(jiraConnectionService.getConnections(teamId));
     }
 
@@ -166,6 +176,7 @@ public class IntegrationController {
     public ResponseEntity<JiraConnectionResponse> getJiraConnection(
             @PathVariable UUID teamId,
             @PathVariable UUID connectionId) {
+        log.debug("getJiraConnection called with teamId={}, connectionId={}", teamId, connectionId);
         return ResponseEntity.ok(jiraConnectionService.getConnection(connectionId));
     }
 
@@ -185,6 +196,7 @@ public class IntegrationController {
     public ResponseEntity<Void> deleteJiraConnection(
             @PathVariable UUID teamId,
             @PathVariable UUID connectionId) {
+        log.debug("deleteJiraConnection called with teamId={}, connectionId={}", teamId, connectionId);
         jiraConnectionService.deleteConnection(connectionId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "JIRA_CONNECTION_DELETED", "JIRA_CONNECTION", connectionId, null);
         return ResponseEntity.noContent().build();

@@ -13,6 +13,8 @@ import com.codeops.service.TechDebtService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -43,6 +45,8 @@ import java.util.UUID;
 @Tag(name = "Tech Debt")
 public class TechDebtController {
 
+    private static final Logger log = LoggerFactory.getLogger(TechDebtController.class);
+
     private final TechDebtService techDebtService;
     private final AuditLogService auditLogService;
 
@@ -59,6 +63,7 @@ public class TechDebtController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TechDebtItemResponse> createTechDebtItem(@Valid @RequestBody CreateTechDebtItemRequest request) {
+        log.debug("createTechDebtItem called");
         return ResponseEntity.status(201).body(techDebtService.createTechDebtItem(request));
     }
 
@@ -75,6 +80,7 @@ public class TechDebtController {
     @PostMapping("/batch")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TechDebtItemResponse>> createTechDebtItems(@Valid @RequestBody List<CreateTechDebtItemRequest> requests) {
+        log.debug("createTechDebtItems called with batchSize={}", requests.size());
         return ResponseEntity.status(201).body(techDebtService.createTechDebtItems(requests));
     }
 
@@ -91,6 +97,7 @@ public class TechDebtController {
     @GetMapping("/{itemId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TechDebtItemResponse> getTechDebtItem(@PathVariable UUID itemId) {
+        log.debug("getTechDebtItem called with itemId={}", itemId);
         return ResponseEntity.ok(techDebtService.getTechDebtItem(itemId));
     }
 
@@ -113,6 +120,7 @@ public class TechDebtController {
             @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getTechDebtForProject called with projectId={}", projectId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(techDebtService.getTechDebtForProject(projectId, pageable));
@@ -139,6 +147,7 @@ public class TechDebtController {
             @PathVariable DebtStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getTechDebtByStatus called with projectId={}, status={}", projectId, status);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(techDebtService.getTechDebtByStatus(projectId, status, pageable));
@@ -165,6 +174,7 @@ public class TechDebtController {
             @PathVariable DebtCategory category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getTechDebtByCategory called with projectId={}, category={}", projectId, category);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(techDebtService.getTechDebtByCategory(projectId, category, pageable));
@@ -185,6 +195,7 @@ public class TechDebtController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TechDebtItemResponse> updateTechDebtStatus(@PathVariable UUID itemId,
                                                                       @Valid @RequestBody UpdateTechDebtStatusRequest request) {
+        log.debug("updateTechDebtStatus called with itemId={}", itemId);
         TechDebtItemResponse response = techDebtService.updateTechDebtStatus(itemId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TECH_DEBT_STATUS_UPDATED", "TECH_DEBT", itemId, null);
         return ResponseEntity.ok(response);
@@ -204,6 +215,7 @@ public class TechDebtController {
     @DeleteMapping("/{itemId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteTechDebtItem(@PathVariable UUID itemId) {
+        log.debug("deleteTechDebtItem called with itemId={}", itemId);
         techDebtService.deleteTechDebtItem(itemId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TECH_DEBT_DELETED", "TECH_DEBT", itemId, null);
         return ResponseEntity.noContent().build();
@@ -223,6 +235,7 @@ public class TechDebtController {
     @GetMapping("/project/{projectId}/summary")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getDebtSummary(@PathVariable UUID projectId) {
+        log.debug("getDebtSummary called with projectId={}", projectId);
         return ResponseEntity.ok(techDebtService.getDebtSummary(projectId));
     }
 }

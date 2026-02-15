@@ -12,6 +12,8 @@ import com.codeops.service.HealthMonitorService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -38,6 +40,8 @@ import java.util.UUID;
 @Tag(name = "Health Monitor")
 public class HealthMonitorController {
 
+    private static final Logger log = LoggerFactory.getLogger(HealthMonitorController.class);
+
     private final HealthMonitorService healthMonitorService;
     private final AuditLogService auditLogService;
 
@@ -54,6 +58,7 @@ public class HealthMonitorController {
     @PostMapping("/schedules")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthScheduleResponse> createSchedule(@Valid @RequestBody CreateHealthScheduleRequest request) {
+        log.debug("createSchedule called");
         HealthScheduleResponse response = healthMonitorService.createSchedule(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "HEALTH_SCHEDULE_CREATED", "HEALTH_SCHEDULE", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -70,6 +75,7 @@ public class HealthMonitorController {
     @GetMapping("/schedules/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<HealthScheduleResponse>> getSchedulesForProject(@PathVariable UUID projectId) {
+        log.debug("getSchedulesForProject called with projectId={}", projectId);
         return ResponseEntity.ok(healthMonitorService.getSchedulesForProject(projectId));
     }
 
@@ -86,6 +92,7 @@ public class HealthMonitorController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthScheduleResponse> updateSchedule(@PathVariable UUID scheduleId,
                                                                   @RequestParam boolean active) {
+        log.debug("updateSchedule called with scheduleId={}, active={}", scheduleId, active);
         return ResponseEntity.ok(healthMonitorService.updateSchedule(scheduleId, active));
     }
 
@@ -102,6 +109,7 @@ public class HealthMonitorController {
     @DeleteMapping("/schedules/{scheduleId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteSchedule(@PathVariable UUID scheduleId) {
+        log.debug("deleteSchedule called with scheduleId={}", scheduleId);
         healthMonitorService.deleteSchedule(scheduleId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "HEALTH_SCHEDULE_DELETED", "HEALTH_SCHEDULE", scheduleId, null);
         return ResponseEntity.noContent().build();
@@ -118,6 +126,7 @@ public class HealthMonitorController {
     @PostMapping("/snapshots")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthSnapshotResponse> createSnapshot(@Valid @RequestBody CreateHealthSnapshotRequest request) {
+        log.debug("createSnapshot called");
         return ResponseEntity.status(201).body(healthMonitorService.createSnapshot(request));
     }
 
@@ -137,6 +146,7 @@ public class HealthMonitorController {
             @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getSnapshots called with projectId={}", projectId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("capturedAt").descending());
         return ResponseEntity.ok(healthMonitorService.getSnapshots(projectId, pageable));
@@ -153,6 +163,7 @@ public class HealthMonitorController {
     @GetMapping("/snapshots/project/{projectId}/latest")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HealthSnapshotResponse> getLatestSnapshot(@PathVariable UUID projectId) {
+        log.debug("getLatestSnapshot called with projectId={}", projectId);
         return ResponseEntity.ok(healthMonitorService.getLatestSnapshot(projectId));
     }
 
@@ -170,6 +181,7 @@ public class HealthMonitorController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<HealthSnapshotResponse>> getHealthTrend(@PathVariable UUID projectId,
                                                                         @RequestParam(defaultValue = "30") int limit) {
+        log.debug("getHealthTrend called with projectId={}, limit={}", projectId, limit);
         return ResponseEntity.ok(healthMonitorService.getHealthTrend(projectId, limit));
     }
 }

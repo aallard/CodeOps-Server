@@ -11,6 +11,8 @@ import com.codeops.service.RemediationTaskService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,6 +42,8 @@ import java.util.UUID;
 @Tag(name = "Remediation Tasks")
 public class TaskController {
 
+    private static final Logger log = LoggerFactory.getLogger(TaskController.class);
+
     private final RemediationTaskService remediationTaskService;
     private final AuditLogService auditLogService;
 
@@ -56,6 +60,7 @@ public class TaskController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody CreateTaskRequest request) {
+        log.debug("createTask called");
         TaskResponse response = remediationTaskService.createTask(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TASK_CREATED", "TASK", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -76,6 +81,7 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TaskResponse>> createTasks(
             @Valid @RequestBody List<CreateTaskRequest> requests) {
+        log.debug("createTasks called with batchSize={}", requests.size());
         List<TaskResponse> responses = remediationTaskService.createTasks(requests);
         responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TASK_CREATED", "TASK", r.id(), null));
         return ResponseEntity.status(201).body(responses);
@@ -100,6 +106,7 @@ public class TaskController {
             @PathVariable UUID jobId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getTasksForJob called with jobId={}", jobId);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("taskNumber").ascending());
         return ResponseEntity.ok(remediationTaskService.getTasksForJob(jobId, pageable));
@@ -118,6 +125,7 @@ public class TaskController {
     @GetMapping("/{taskId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponse> getTask(@PathVariable UUID taskId) {
+        log.debug("getTask called with taskId={}", taskId);
         return ResponseEntity.ok(remediationTaskService.getTask(taskId));
     }
 
@@ -138,6 +146,7 @@ public class TaskController {
     public ResponseEntity<PageResponse<TaskResponse>> getAssignedTasks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getAssignedTasks called");
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(remediationTaskService.getTasksAssignedToUser(SecurityUtils.getCurrentUserId(), pageable));
@@ -158,6 +167,7 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponse> updateTask(@PathVariable UUID taskId,
                                                     @Valid @RequestBody UpdateTaskRequest request) {
+        log.debug("updateTask called with taskId={}", taskId);
         TaskResponse response = remediationTaskService.updateTask(taskId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TASK_UPDATED", "TASK", taskId, null);
         return ResponseEntity.ok(response);
