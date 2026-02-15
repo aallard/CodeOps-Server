@@ -21,6 +21,8 @@ import com.codeops.service.QaJobService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -50,6 +52,8 @@ import java.util.UUID;
 @Tag(name = "QA Jobs")
 public class JobController {
 
+    private static final Logger log = LoggerFactory.getLogger(JobController.class);
+
     private final QaJobService qaJobService;
     private final AgentRunService agentRunService;
     private final BugInvestigationService bugInvestigationService;
@@ -68,6 +72,7 @@ public class JobController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> createJob(@Valid @RequestBody CreateJobRequest request) {
+        log.debug("createJob called");
         JobResponse response = qaJobService.createJob(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "JOB_CREATED", "JOB", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -84,6 +89,7 @@ public class JobController {
     @GetMapping("/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> getJob(@PathVariable UUID jobId) {
+        log.debug("getJob called with jobId={}", jobId);
         return ResponseEntity.ok(qaJobService.getJob(jobId));
     }
 
@@ -103,6 +109,7 @@ public class JobController {
             @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getJobsForProject called with projectId={}, page={}, size={}", projectId, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(qaJobService.getJobsForProject(projectId, pageable));
@@ -122,6 +129,7 @@ public class JobController {
     public ResponseEntity<PageResponse<JobSummaryResponse>> getMyJobs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getMyJobs called with page={}, size={}", page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(qaJobService.getJobsByUser(SecurityUtils.getCurrentUserId(), pageable));
@@ -142,6 +150,7 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobResponse> updateJob(@PathVariable UUID jobId,
                                                   @Valid @RequestBody UpdateJobRequest request) {
+        log.debug("updateJob called with jobId={}", jobId);
         JobResponse response = qaJobService.updateJob(jobId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "JOB_UPDATED", "JOB", jobId, null);
         return ResponseEntity.ok(response);
@@ -160,6 +169,7 @@ public class JobController {
     @DeleteMapping("/{jobId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+        log.debug("deleteJob called with jobId={}", jobId);
         qaJobService.deleteJob(jobId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "JOB_DELETED", "JOB", jobId, null);
         return ResponseEntity.noContent().build();
@@ -180,6 +190,7 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> createAgentRun(@PathVariable UUID jobId,
                                                             @Valid @RequestBody CreateAgentRunRequest request) {
+        log.debug("createAgentRun called with jobId={}", jobId);
         AgentRunResponse response = agentRunService.createAgentRun(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_CREATED", "AGENT_RUN", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -201,6 +212,7 @@ public class JobController {
     public ResponseEntity<List<AgentRunResponse>> createAgentRunsBatch(
             @PathVariable UUID jobId,
             @RequestBody List<AgentType> agentTypes) {
+        log.debug("createAgentRunsBatch called with jobId={}", jobId);
         List<AgentRunResponse> responses = agentRunService.createAgentRuns(jobId, agentTypes);
         responses.forEach(r -> auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_CREATED", "AGENT_RUN", r.id(), null));
         return ResponseEntity.status(201).body(responses);
@@ -217,6 +229,7 @@ public class JobController {
     @GetMapping("/{jobId}/agents")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgentRunResponse>> getAgentRuns(@PathVariable UUID jobId) {
+        log.debug("getAgentRuns called with jobId={}", jobId);
         return ResponseEntity.ok(agentRunService.getAgentRuns(jobId));
     }
 
@@ -235,6 +248,7 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgentRunResponse> updateAgentRun(@PathVariable UUID agentRunId,
                                                             @Valid @RequestBody UpdateAgentRunRequest request) {
+        log.debug("updateAgentRun called with agentRunId={}", agentRunId);
         AgentRunResponse response = agentRunService.updateAgentRun(agentRunId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "AGENT_RUN_UPDATED", "AGENT_RUN", agentRunId, null);
         return ResponseEntity.ok(response);
@@ -251,6 +265,7 @@ public class JobController {
     @GetMapping("/{jobId}/investigation")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BugInvestigationResponse> getInvestigation(@PathVariable UUID jobId) {
+        log.debug("getInvestigation called with jobId={}", jobId);
         return ResponseEntity.ok(bugInvestigationService.getInvestigationByJob(jobId));
     }
 
@@ -270,6 +285,7 @@ public class JobController {
     public ResponseEntity<BugInvestigationResponse> createInvestigation(
             @PathVariable UUID jobId,
             @Valid @RequestBody CreateBugInvestigationRequest request) {
+        log.debug("createInvestigation called with jobId={}", jobId);
         BugInvestigationResponse response = bugInvestigationService.createInvestigation(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "INVESTIGATION_CREATED", "BUG_INVESTIGATION", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -291,6 +307,7 @@ public class JobController {
     public ResponseEntity<BugInvestigationResponse> updateInvestigation(
             @PathVariable UUID investigationId,
             @Valid @RequestBody UpdateBugInvestigationRequest request) {
+        log.debug("updateInvestigation called with investigationId={}", investigationId);
         BugInvestigationResponse response = bugInvestigationService.updateInvestigation(investigationId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "INVESTIGATION_UPDATED", "BUG_INVESTIGATION", investigationId, null);
         return ResponseEntity.ok(response);

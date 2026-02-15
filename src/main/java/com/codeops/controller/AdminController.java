@@ -12,6 +12,8 @@ import com.codeops.service.AuditLogService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +42,8 @@ import java.util.UUID;
 @Tag(name = "Admin")
 public class AdminController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+
     private final AdminService adminService;
     private final AuditLogService auditLogService;
 
@@ -55,6 +59,7 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<Page<UserResponse>> getAllUsers(@RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "20") int size) {
+        log.debug("getAllUsers called with page={}, size={}", page, size);
         return ResponseEntity.ok(adminService.getAllUsers(PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE))));
     }
 
@@ -68,6 +73,7 @@ public class AdminController {
      */
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable UUID userId) {
+        log.debug("getUserById called with userId={}", userId);
         return ResponseEntity.ok(adminService.getUserById(userId));
     }
 
@@ -85,6 +91,7 @@ public class AdminController {
     @PutMapping("/users/{userId}")
     public ResponseEntity<UserResponse> updateUserStatus(@PathVariable UUID userId,
                                                           @Valid @RequestBody AdminUpdateUserRequest request) {
+        log.debug("updateUserStatus called with userId={}", userId);
         UserResponse response = adminService.updateUserStatus(userId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "ADMIN_USER_UPDATED", "USER", userId, null);
         return ResponseEntity.ok(response);
@@ -99,6 +106,7 @@ public class AdminController {
      */
     @GetMapping("/settings")
     public ResponseEntity<List<SystemSettingResponse>> getAllSettings() {
+        log.debug("getAllSettings called");
         return ResponseEntity.ok(adminService.getAllSettings());
     }
 
@@ -112,6 +120,7 @@ public class AdminController {
      */
     @GetMapping("/settings/{key}")
     public ResponseEntity<SystemSettingResponse> getSystemSetting(@PathVariable String key) {
+        log.debug("getSystemSetting called with key={}", key);
         return ResponseEntity.ok(adminService.getSystemSetting(key));
     }
 
@@ -127,6 +136,7 @@ public class AdminController {
      */
     @PutMapping("/settings")
     public ResponseEntity<SystemSettingResponse> updateSystemSetting(@Valid @RequestBody UpdateSystemSettingRequest request) {
+        log.debug("updateSystemSetting called");
         SystemSettingResponse response = adminService.updateSystemSetting(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "SYSTEM_SETTING_UPDATED", "SYSTEM_SETTING", null, request.key());
         return ResponseEntity.ok(response);
@@ -141,6 +151,7 @@ public class AdminController {
      */
     @GetMapping("/usage")
     public ResponseEntity<Map<String, Object>> getUsageStats() {
+        log.debug("getUsageStats called");
         return ResponseEntity.ok(adminService.getUsageStats());
     }
 
@@ -158,6 +169,7 @@ public class AdminController {
     public ResponseEntity<Page<AuditLogResponse>> getTeamAuditLog(@PathVariable UUID teamId,
                                                                     @RequestParam(defaultValue = "0") int page,
                                                                     @RequestParam(defaultValue = "20") int size) {
+        log.debug("getTeamAuditLog called with teamId={}, page={}, size={}", teamId, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE));
         return ResponseEntity.ok(auditLogService.getTeamAuditLog(teamId, pageable));
     }
@@ -176,6 +188,7 @@ public class AdminController {
     public ResponseEntity<Page<AuditLogResponse>> getUserAuditLog(@PathVariable UUID userId,
                                                                     @RequestParam(defaultValue = "0") int page,
                                                                     @RequestParam(defaultValue = "20") int size) {
+        log.debug("getUserAuditLog called with userId={}, page={}, size={}", userId, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE));
         return ResponseEntity.ok(auditLogService.getUserAuditLog(userId, pageable));
     }

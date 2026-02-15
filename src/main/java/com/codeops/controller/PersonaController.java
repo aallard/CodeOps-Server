@@ -12,6 +12,8 @@ import com.codeops.service.PersonaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -42,6 +44,8 @@ import java.util.UUID;
 @Tag(name = "Personas")
 public class PersonaController {
 
+    private static final Logger log = LoggerFactory.getLogger(PersonaController.class);
+
     private final PersonaService personaService;
     private final AuditLogService auditLogService;
 
@@ -58,6 +62,7 @@ public class PersonaController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> createPersona(@Valid @RequestBody CreatePersonaRequest request) {
+        log.debug("createPersona called");
         PersonaResponse response = personaService.createPersona(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_CREATED", "PERSONA", response.id(), "");
         return ResponseEntity.status(201).body(response);
@@ -76,6 +81,7 @@ public class PersonaController {
     @GetMapping("/{personaId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> getPersona(@PathVariable UUID personaId) {
+        log.debug("getPersona called with personaId={}", personaId);
         return ResponseEntity.ok(personaService.getPersona(personaId));
     }
 
@@ -98,6 +104,7 @@ public class PersonaController {
             @PathVariable UUID teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getPersonasForTeam called with teamId={}, page={}, size={}", teamId, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(personaService.getPersonasForTeam(teamId, pageable));
@@ -118,6 +125,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PersonaResponse>> getPersonasByAgentType(@PathVariable UUID teamId,
                                                                         @PathVariable AgentType agentType) {
+        log.debug("getPersonasByAgentType called with teamId={}, agentType={}", teamId, agentType);
         return ResponseEntity.ok(personaService.getPersonasByAgentType(teamId, agentType));
     }
 
@@ -136,6 +144,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> getDefaultPersona(@PathVariable UUID teamId,
                                                               @PathVariable AgentType agentType) {
+        log.debug("getDefaultPersona called with teamId={}, agentType={}", teamId, agentType);
         return ResponseEntity.ok(personaService.getDefaultPersona(teamId, agentType));
     }
 
@@ -151,6 +160,7 @@ public class PersonaController {
     @GetMapping("/mine")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PersonaResponse>> getMyPersonas() {
+        log.debug("getMyPersonas called");
         return ResponseEntity.ok(personaService.getPersonasByUser(SecurityUtils.getCurrentUserId()));
     }
 
@@ -167,6 +177,7 @@ public class PersonaController {
     @GetMapping("/system")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PersonaResponse>> getSystemPersonas() {
+        log.debug("getSystemPersonas called");
         return ResponseEntity.ok(personaService.getSystemPersonas());
     }
 
@@ -185,6 +196,7 @@ public class PersonaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> updatePersona(@PathVariable UUID personaId,
                                                           @Valid @RequestBody UpdatePersonaRequest request) {
+        log.debug("updatePersona called with personaId={}", personaId);
         PersonaResponse response = personaService.updatePersona(personaId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_UPDATED", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);
@@ -204,6 +216,7 @@ public class PersonaController {
     @DeleteMapping("/{personaId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deletePersona(@PathVariable UUID personaId) {
+        log.debug("deletePersona called with personaId={}", personaId);
         PersonaResponse persona = personaService.getPersona(personaId);
         personaService.deletePersona(personaId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), persona.teamId(), "PERSONA_DELETED", "PERSONA", personaId, "");
@@ -225,6 +238,7 @@ public class PersonaController {
     @PutMapping("/{personaId}/set-default")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> setAsDefault(@PathVariable UUID personaId) {
+        log.debug("setAsDefault called with personaId={}", personaId);
         PersonaResponse response = personaService.setAsDefault(personaId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_SET_DEFAULT", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);
@@ -243,6 +257,7 @@ public class PersonaController {
     @PutMapping("/{personaId}/remove-default")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PersonaResponse> removeDefault(@PathVariable UUID personaId) {
+        log.debug("removeDefault called with personaId={}", personaId);
         PersonaResponse response = personaService.removeDefault(personaId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PERSONA_REMOVED_DEFAULT", "PERSONA", personaId, "");
         return ResponseEntity.ok(response);

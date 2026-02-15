@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +38,8 @@ import java.util.UUID;
 @Tag(name = "Users")
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
     private final UserService userService;
     private final AuditLogService auditLogService;
 
@@ -51,6 +55,7 @@ public class UserController {
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponse> getCurrentUser() {
+        log.debug("getCurrentUser called");
         return ResponseEntity.ok(userService.getCurrentUser());
     }
 
@@ -67,6 +72,7 @@ public class UserController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
+        log.debug("getUserById called with id={}", id);
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -85,6 +91,7 @@ public class UserController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponse> updateUser(@PathVariable UUID id,
                                                    @Valid @RequestBody UpdateUserRequest request) {
+        log.debug("updateUser called with id={}", id);
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
@@ -102,6 +109,7 @@ public class UserController {
     @GetMapping("/search")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam @NotBlank @Size(min = 2, max = 100) String q) {
+        log.debug("searchUsers called with q={}", q);
         return ResponseEntity.ok(userService.searchUsers(q));
     }
 
@@ -119,6 +127,7 @@ public class UserController {
     @PutMapping("/{id}/deactivate")
     @PreAuthorize("hasRole('ADMIN') or hasRole('OWNER')")
     public ResponseEntity<Void> deactivateUser(@PathVariable UUID id) {
+        log.debug("deactivateUser called with id={}", id);
         userService.deactivateUser(id);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "USER_DEACTIVATED", "USER", id, null);
         return ResponseEntity.noContent().build();
@@ -138,6 +147,7 @@ public class UserController {
     @PutMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN') or hasRole('OWNER')")
     public ResponseEntity<Void> activateUser(@PathVariable UUID id) {
+        log.debug("activateUser called with id={}", id);
         userService.activateUser(id);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "USER_ACTIVATED", "USER", id, null);
         return ResponseEntity.noContent().build();

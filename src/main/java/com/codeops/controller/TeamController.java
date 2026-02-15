@@ -13,6 +13,8 @@ import com.codeops.service.TeamService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +42,8 @@ import java.util.UUID;
 @Tag(name = "Teams")
 public class TeamController {
 
+    private static final Logger log = LoggerFactory.getLogger(TeamController.class);
+
     private final TeamService teamService;
     private final AuditLogService auditLogService;
 
@@ -56,6 +60,7 @@ public class TeamController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TeamResponse> createTeam(@Valid @RequestBody CreateTeamRequest request) {
+        log.debug("createTeam called");
         TeamResponse response = teamService.createTeam(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.id(), "TEAM_CREATED", "TEAM", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -73,6 +78,7 @@ public class TeamController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TeamResponse>> getTeams() {
+        log.debug("getTeams called");
         return ResponseEntity.ok(teamService.getTeamsForUser());
     }
 
@@ -89,6 +95,7 @@ public class TeamController {
     @GetMapping("/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TeamResponse> getTeam(@PathVariable UUID teamId) {
+        log.debug("getTeam called with teamId={}", teamId);
         return ResponseEntity.ok(teamService.getTeam(teamId));
     }
 
@@ -107,6 +114,7 @@ public class TeamController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TeamResponse> updateTeam(@PathVariable UUID teamId,
                                                    @Valid @RequestBody UpdateTeamRequest request) {
+        log.debug("updateTeam called with teamId={}", teamId);
         TeamResponse response = teamService.updateTeam(teamId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "TEAM_UPDATED", "TEAM", teamId, null);
         return ResponseEntity.ok(response);
@@ -126,6 +134,7 @@ public class TeamController {
     @DeleteMapping("/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteTeam(@PathVariable UUID teamId) {
+        log.debug("deleteTeam called with teamId={}", teamId);
         teamService.deleteTeam(teamId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), null, "TEAM_DELETED", "TEAM", teamId, null);
         return ResponseEntity.noContent().build();
@@ -144,6 +153,7 @@ public class TeamController {
     @GetMapping("/{teamId}/members")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TeamMemberResponse>> getTeamMembers(@PathVariable UUID teamId) {
+        log.debug("getTeamMembers called with teamId={}", teamId);
         return ResponseEntity.ok(teamService.getTeamMembers(teamId));
     }
 
@@ -164,6 +174,7 @@ public class TeamController {
     public ResponseEntity<TeamMemberResponse> updateMemberRole(@PathVariable UUID teamId,
                                                                 @PathVariable UUID userId,
                                                                 @Valid @RequestBody UpdateMemberRoleRequest request) {
+        log.debug("updateMemberRole called with teamId={}, userId={}", teamId, userId);
         TeamMemberResponse response = teamService.updateMemberRole(teamId, userId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "MEMBER_ROLE_UPDATED", "TEAM_MEMBER", userId, null);
         return ResponseEntity.ok(response);
@@ -184,6 +195,7 @@ public class TeamController {
     @DeleteMapping("/{teamId}/members/{userId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> removeMember(@PathVariable UUID teamId, @PathVariable UUID userId) {
+        log.debug("removeMember called with teamId={}, userId={}", teamId, userId);
         teamService.removeMember(teamId, userId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "MEMBER_REMOVED", "TEAM_MEMBER", userId, null);
         return ResponseEntity.noContent().build();
@@ -204,6 +216,7 @@ public class TeamController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<InvitationResponse> inviteMember(@PathVariable UUID teamId,
                                                            @Valid @RequestBody InviteMemberRequest request) {
+        log.debug("inviteMember called with teamId={}", teamId);
         InvitationResponse response = teamService.inviteMember(teamId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "MEMBER_INVITED", "INVITATION", response.id(), null);
         return ResponseEntity.status(201).body(response);
@@ -222,6 +235,7 @@ public class TeamController {
     @GetMapping("/{teamId}/invitations")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<InvitationResponse>> getTeamInvitations(@PathVariable UUID teamId) {
+        log.debug("getTeamInvitations called with teamId={}", teamId);
         return ResponseEntity.ok(teamService.getTeamInvitations(teamId));
     }
 
@@ -241,6 +255,7 @@ public class TeamController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> cancelInvitation(@PathVariable UUID teamId,
                                                  @PathVariable UUID invitationId) {
+        log.debug("cancelInvitation called with teamId={}, invitationId={}", teamId, invitationId);
         teamService.cancelInvitation(invitationId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "INVITATION_CANCELLED", "INVITATION", invitationId, null);
         return ResponseEntity.noContent().build();
@@ -260,6 +275,7 @@ public class TeamController {
     @PostMapping("/invitations/{token}/accept")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TeamResponse> acceptInvitation(@PathVariable String token) {
+        log.debug("acceptInvitation called with token={}", token);
         TeamResponse response = teamService.acceptInvitation(token);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.id(), "INVITATION_ACCEPTED", "TEAM", response.id(), null);
         return ResponseEntity.ok(response);

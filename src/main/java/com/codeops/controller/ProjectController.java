@@ -11,6 +11,8 @@ import com.codeops.service.ProjectService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -39,6 +41,8 @@ import java.util.UUID;
 @Tag(name = "Projects")
 public class ProjectController {
 
+    private static final Logger log = LoggerFactory.getLogger(ProjectController.class);
+
     private final ProjectService projectService;
     private final AuditLogService auditLogService;
 
@@ -57,6 +61,7 @@ public class ProjectController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectResponse> createProject(@PathVariable UUID teamId,
                                                          @Valid @RequestBody CreateProjectRequest request) {
+        log.debug("createProject called with teamId={}", teamId);
         ProjectResponse response = projectService.createProject(teamId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), teamId, "PROJECT_CREATED", "PROJECT", response.id(), "");
         return ResponseEntity.status(201).body(response);
@@ -84,6 +89,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "false") boolean includeArchived,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.debug("getProjects called with teamId={}, includeArchived={}, page={}, size={}", teamId, includeArchived, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE),
                 Sort.by("createdAt").descending());
         return ResponseEntity.ok(projectService.getAllProjectsForTeam(teamId, includeArchived, pageable));
@@ -102,6 +108,7 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectResponse> getProject(@PathVariable UUID projectId) {
+        log.debug("getProject called with projectId={}", projectId);
         return ResponseEntity.ok(projectService.getProject(projectId));
     }
 
@@ -120,6 +127,7 @@ public class ProjectController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectResponse> updateProject(@PathVariable UUID projectId,
                                                          @Valid @RequestBody UpdateProjectRequest request) {
+        log.debug("updateProject called with projectId={}", projectId);
         ProjectResponse response = projectService.updateProject(projectId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "PROJECT_UPDATED", "PROJECT", projectId, "");
         return ResponseEntity.ok(response);
@@ -138,6 +146,7 @@ public class ProjectController {
     @PutMapping("/{projectId}/archive")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> archiveProject(@PathVariable UUID projectId) {
+        log.debug("archiveProject called with projectId={}", projectId);
         ProjectResponse project = projectService.getProject(projectId);
         projectService.archiveProject(projectId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_ARCHIVED", "PROJECT", projectId, "");
@@ -157,6 +166,7 @@ public class ProjectController {
     @PutMapping("/{projectId}/unarchive")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> unarchiveProject(@PathVariable UUID projectId) {
+        log.debug("unarchiveProject called with projectId={}", projectId);
         ProjectResponse project = projectService.getProject(projectId);
         projectService.unarchiveProject(projectId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_UNARCHIVED", "PROJECT", projectId, "");
@@ -177,6 +187,7 @@ public class ProjectController {
     @DeleteMapping("/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteProject(@PathVariable UUID projectId) {
+        log.debug("deleteProject called with projectId={}", projectId);
         ProjectResponse project = projectService.getProject(projectId);
         projectService.deleteProject(projectId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), project.teamId(), "PROJECT_DELETED", "PROJECT", projectId, "");

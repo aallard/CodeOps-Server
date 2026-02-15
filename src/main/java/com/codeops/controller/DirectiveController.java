@@ -11,6 +11,8 @@ import com.codeops.service.DirectiveService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,8 @@ import java.util.UUID;
 @Tag(name = "Directives")
 public class DirectiveController {
 
+    private static final Logger log = LoggerFactory.getLogger(DirectiveController.class);
+
     private final DirectiveService directiveService;
     private final AuditLogService auditLogService;
 
@@ -51,6 +55,7 @@ public class DirectiveController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DirectiveResponse> createDirective(@Valid @RequestBody CreateDirectiveRequest request) {
+        log.debug("createDirective called");
         DirectiveResponse response = directiveService.createDirective(request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "DIRECTIVE_CREATED", "DIRECTIVE", response.id(), "");
         return ResponseEntity.status(201).body(response);
@@ -67,6 +72,7 @@ public class DirectiveController {
     @GetMapping("/{directiveId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DirectiveResponse> getDirective(@PathVariable UUID directiveId) {
+        log.debug("getDirective called with directiveId={}", directiveId);
         return ResponseEntity.ok(directiveService.getDirective(directiveId));
     }
 
@@ -81,6 +87,7 @@ public class DirectiveController {
     @GetMapping("/team/{teamId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DirectiveResponse>> getDirectivesForTeam(@PathVariable UUID teamId) {
+        log.debug("getDirectivesForTeam called with teamId={}", teamId);
         return ResponseEntity.ok(directiveService.getDirectivesForTeam(teamId));
     }
 
@@ -95,6 +102,7 @@ public class DirectiveController {
     @GetMapping("/project/{projectId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DirectiveResponse>> getDirectivesForProject(@PathVariable UUID projectId) {
+        log.debug("getDirectivesForProject called with projectId={}", projectId);
         return ResponseEntity.ok(directiveService.getDirectivesForProject(projectId));
     }
 
@@ -113,6 +121,7 @@ public class DirectiveController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DirectiveResponse> updateDirective(@PathVariable UUID directiveId,
                                                               @Valid @RequestBody UpdateDirectiveRequest request) {
+        log.debug("updateDirective called with directiveId={}", directiveId);
         DirectiveResponse response = directiveService.updateDirective(directiveId, request);
         auditLogService.log(SecurityUtils.getCurrentUserId(), response.teamId(), "DIRECTIVE_UPDATED", "DIRECTIVE", directiveId, "");
         return ResponseEntity.ok(response);
@@ -131,6 +140,7 @@ public class DirectiveController {
     @DeleteMapping("/{directiveId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteDirective(@PathVariable UUID directiveId) {
+        log.debug("deleteDirective called with directiveId={}", directiveId);
         DirectiveResponse directive = directiveService.getDirective(directiveId);
         directiveService.deleteDirective(directiveId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_DELETED", "DIRECTIVE", directiveId, "");
@@ -150,6 +160,7 @@ public class DirectiveController {
     @PostMapping("/assign")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectDirectiveResponse> assignToProject(@Valid @RequestBody AssignDirectiveRequest request) {
+        log.debug("assignToProject called");
         ProjectDirectiveResponse response = directiveService.assignToProject(request);
         DirectiveResponse directive = directiveService.getDirective(request.directiveId());
         auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_ASSIGNED", "DIRECTIVE", request.directiveId(), "");
@@ -170,6 +181,7 @@ public class DirectiveController {
     @DeleteMapping("/project/{projectId}/directive/{directiveId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> removeFromProject(@PathVariable UUID projectId, @PathVariable UUID directiveId) {
+        log.debug("removeFromProject called with projectId={}, directiveId={}", projectId, directiveId);
         DirectiveResponse directive = directiveService.getDirective(directiveId);
         directiveService.removeFromProject(projectId, directiveId);
         auditLogService.log(SecurityUtils.getCurrentUserId(), directive.teamId(), "DIRECTIVE_REMOVED", "DIRECTIVE", directiveId, "");
@@ -188,6 +200,7 @@ public class DirectiveController {
     @GetMapping("/project/{projectId}/assignments")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ProjectDirectiveResponse>> getProjectDirectives(@PathVariable UUID projectId) {
+        log.debug("getProjectDirectives called with projectId={}", projectId);
         return ResponseEntity.ok(directiveService.getProjectDirectives(projectId));
     }
 
@@ -202,6 +215,7 @@ public class DirectiveController {
     @GetMapping("/project/{projectId}/enabled")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DirectiveResponse>> getEnabledDirectives(@PathVariable UUID projectId) {
+        log.debug("getEnabledDirectives called with projectId={}", projectId);
         return ResponseEntity.ok(directiveService.getEnabledDirectivesForProject(projectId));
     }
 
@@ -220,6 +234,7 @@ public class DirectiveController {
     public ResponseEntity<ProjectDirectiveResponse> toggleDirective(@PathVariable UUID projectId,
                                                                      @PathVariable UUID directiveId,
                                                                      @RequestParam boolean enabled) {
+        log.debug("toggleDirective called with projectId={}, directiveId={}, enabled={}", projectId, directiveId, enabled);
         return ResponseEntity.ok(directiveService.toggleProjectDirective(projectId, directiveId, enabled));
     }
 }

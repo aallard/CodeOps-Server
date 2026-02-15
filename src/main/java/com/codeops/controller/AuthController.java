@@ -14,6 +14,8 @@ import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +38,8 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Authentication")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final AuthService authService;
     private final AuditLogService auditLogService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -53,6 +57,7 @@ public class AuthController {
      */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        log.debug("register called");
         AuthResponse response = authService.register(request);
         auditLogService.log(response.user().id(), null, "USER_REGISTERED", "USER", response.user().id(), null);
         return ResponseEntity.status(201).body(response);
@@ -70,6 +75,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        log.debug("login called with email={}", request.email());
         AuthResponse response = authService.login(request);
         auditLogService.log(response.user().id(), null, "USER_LOGIN", "USER", response.user().id(), null);
         return ResponseEntity.ok(response);
@@ -85,6 +91,7 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        log.debug("refresh called");
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
     }
@@ -103,6 +110,7 @@ public class AuthController {
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
+        log.debug("logout called");
         String token = authHeader.replace("Bearer ", "");
         Claims claims = jwtTokenProvider.parseClaims(token);
         tokenBlacklistService.blacklist(
@@ -126,6 +134,7 @@ public class AuthController {
     @PostMapping("/change-password")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        log.debug("changePassword called");
         authService.changePassword(request);
         return ResponseEntity.ok().build();
     }
