@@ -7,6 +7,9 @@ import com.codeops.entity.enums.Severity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -34,4 +37,14 @@ public interface FindingRepository extends JpaRepository<Finding, UUID> {
     long countByJobIdAndSeverity(UUID jobId, Severity severity);
 
     long countByJobIdAndSeverityAndStatus(UUID jobId, Severity severity, FindingStatus status);
+
+    /**
+     * Bulk-deletes all findings for jobs belonging to the given project.
+     *
+     * @param projectId the project whose findings to remove
+     */
+    @Modifying
+    @Query("DELETE FROM Finding f WHERE f.job.id IN "
+            + "(SELECT j.id FROM QaJob j WHERE j.project.id = :projectId)")
+    void deleteAllByProjectId(@Param("projectId") UUID projectId);
 }

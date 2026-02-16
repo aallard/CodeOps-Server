@@ -58,6 +58,20 @@ public class ProjectService {
     private final GitHubConnectionRepository gitHubConnectionRepository;
     private final JiraConnectionRepository jiraConnectionRepository;
     private final ObjectMapper objectMapper;
+    private final RemediationTaskRepository remediationTaskRepository;
+    private final ComplianceItemRepository complianceItemRepository;
+    private final SpecificationRepository specificationRepository;
+    private final FindingRepository findingRepository;
+    private final AgentRunRepository agentRunRepository;
+    private final BugInvestigationRepository bugInvestigationRepository;
+    private final TechDebtItemRepository techDebtItemRepository;
+    private final DependencyVulnerabilityRepository dependencyVulnerabilityRepository;
+    private final DependencyScanRepository dependencyScanRepository;
+    private final HealthSnapshotRepository healthSnapshotRepository;
+    private final QaJobRepository qaJobRepository;
+    private final HealthScheduleRepository healthScheduleRepository;
+    private final ProjectDirectiveRepository projectDirectiveRepository;
+    private final DirectiveRepository directiveRepository;
 
     /**
      * Creates a new project within the specified team.
@@ -272,6 +286,22 @@ public class ProjectService {
             throw new AccessDeniedException("Only the team owner can delete projects");
         }
 
+        // Delete all child records in FK-safe order before deleting the project
+        remediationTaskRepository.deleteJoinTableByProjectId(projectId);
+        remediationTaskRepository.deleteAllByProjectId(projectId);
+        complianceItemRepository.deleteAllByProjectId(projectId);
+        specificationRepository.deleteAllByProjectId(projectId);
+        findingRepository.deleteAllByProjectId(projectId);
+        agentRunRepository.deleteAllByProjectId(projectId);
+        bugInvestigationRepository.deleteAllByProjectId(projectId);
+        techDebtItemRepository.deleteAllByProjectId(projectId);
+        dependencyVulnerabilityRepository.deleteAllByProjectId(projectId);
+        dependencyScanRepository.deleteAllByProjectId(projectId);
+        healthSnapshotRepository.deleteAllByProjectId(projectId);
+        qaJobRepository.deleteAllByProjectId(projectId);
+        healthScheduleRepository.deleteAllByProjectId(projectId);
+        projectDirectiveRepository.deleteAllByProjectId(projectId);
+        directiveRepository.deleteAllByProjectId(projectId);
         projectRepository.delete(project);
         log.info("Project deleted: projectId={}, name={}, deletedBy={}", projectId, project.getName(), currentUserId);
     }

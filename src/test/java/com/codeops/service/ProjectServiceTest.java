@@ -46,6 +46,20 @@ class ProjectServiceTest {
     @Mock private GitHubConnectionRepository gitHubConnectionRepository;
     @Mock private JiraConnectionRepository jiraConnectionRepository;
     @Mock private ObjectMapper objectMapper;
+    @Mock private RemediationTaskRepository remediationTaskRepository;
+    @Mock private ComplianceItemRepository complianceItemRepository;
+    @Mock private SpecificationRepository specificationRepository;
+    @Mock private FindingRepository findingRepository;
+    @Mock private AgentRunRepository agentRunRepository;
+    @Mock private BugInvestigationRepository bugInvestigationRepository;
+    @Mock private TechDebtItemRepository techDebtItemRepository;
+    @Mock private DependencyVulnerabilityRepository dependencyVulnerabilityRepository;
+    @Mock private DependencyScanRepository dependencyScanRepository;
+    @Mock private HealthSnapshotRepository healthSnapshotRepository;
+    @Mock private QaJobRepository qaJobRepository;
+    @Mock private HealthScheduleRepository healthScheduleRepository;
+    @Mock private ProjectDirectiveRepository projectDirectiveRepository;
+    @Mock private DirectiveRepository directiveRepository;
 
     @InjectMocks
     private ProjectService projectService;
@@ -592,7 +606,33 @@ class ProjectServiceTest {
 
         projectService.deleteProject(projectId);
 
-        verify(projectRepository).delete(testProject);
+        // Verify cascade cleanup in FK-safe order
+        var inOrder = inOrder(
+                remediationTaskRepository, complianceItemRepository,
+                specificationRepository, findingRepository,
+                agentRunRepository, bugInvestigationRepository,
+                techDebtItemRepository, dependencyVulnerabilityRepository,
+                dependencyScanRepository, healthSnapshotRepository,
+                qaJobRepository, healthScheduleRepository,
+                projectDirectiveRepository, directiveRepository,
+                projectRepository
+        );
+        inOrder.verify(remediationTaskRepository).deleteJoinTableByProjectId(projectId);
+        inOrder.verify(remediationTaskRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(complianceItemRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(specificationRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(findingRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(agentRunRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(bugInvestigationRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(techDebtItemRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(dependencyVulnerabilityRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(dependencyScanRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(healthSnapshotRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(qaJobRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(healthScheduleRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(projectDirectiveRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(directiveRepository).deleteAllByProjectId(projectId);
+        inOrder.verify(projectRepository).delete(testProject);
     }
 
     @Test
