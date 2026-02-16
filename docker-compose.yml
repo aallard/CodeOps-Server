@@ -1,23 +1,21 @@
-# CodeOps Server — Local Development Infrastructure
-# Usage: docker compose up -d
-
 name: codeops
 
 services:
+  # ============================================
+  # PostgreSQL - Primary Database
+  # ============================================
   postgres:
     image: postgres:16-alpine
     container_name: codeops-db
     environment:
-      POSTGRES_DB: codeops
       POSTGRES_USER: codeops
       POSTGRES_PASSWORD: codeops
+      POSTGRES_DB: codeops
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - codeops-postgres-data:/var/lib/postgresql/data
-    labels:
-      com.codeops.project: "codeops-server"
-      com.codeops.component: "database"
+      - ./init-scripts/postgres:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U codeops -d codeops"]
       interval: 10s
@@ -27,11 +25,156 @@ services:
     networks:
       - codeops-network
 
+  # ============================================
+  # Redis - Caching
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: codeops-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - codeops-redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codeops-network
+
+  # ============================================
+  # Zookeeper - Required for Kafka
+  # ============================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: codeops-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - codeops-zookeeper-data:/var/lib/zookeeper/data
+      - codeops-zookeeper-log:/var/lib/zookeeper/log
+    healthcheck:
+      test: echo srvr | nc localhost 2181 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codeops-network
+
+  # ============================================
+  # Kafka - Event Streaming
+  # ============================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: codeops-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "9092:9092"
+    volumes:
+      - codeops-kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - codeops-network
+
+  # ============================================
+  # Kafka Topic Initialization
+  # ============================================
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: codeops-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo 'Waiting for Kafka to be ready...'
+      sleep 5
+
+      echo 'Creating Kafka topics...'
+
+      # Decision events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.decision.created \
+        --partitions 3 --replication-factor 1
+
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.decision.resolved \
+        --partitions 3 --replication-factor 1
+
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.decision.escalated \
+        --partitions 3 --replication-factor 1
+
+      # Outcome events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.outcome.created \
+        --partitions 3 --replication-factor 1
+
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.outcome.validated \
+        --partitions 3 --replication-factor 1
+
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.outcome.invalidated \
+        --partitions 3 --replication-factor 1
+
+      # Hypothesis events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.hypothesis.created \
+        --partitions 3 --replication-factor 1
+
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.core.hypothesis.concluded \
+        --partitions 3 --replication-factor 1
+
+      # Integration events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.integrations.sync \
+        --partitions 3 --replication-factor 1
+
+      # Notification events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 \
+        --topic codeops.notifications \
+        --partitions 3 --replication-factor 1
+
+      echo 'Listing all topics:'
+      kafka-topics --list --bootstrap-server kafka:29092
+
+      echo 'Kafka initialization complete!'
+      "
+    networks:
+      - codeops-network
+
+volumes:
+  codeops-postgres-data:
+  codeops-redis-data:
+  codeops-zookeeper-data:
+  codeops-zookeeper-log:
+  codeops-kafka-data:
+
 networks:
   codeops-network:
     name: codeops-network
     driver: bridge
-
-volumes:
-  codeops-postgres-data:
-    name: codeops-postgres-data
