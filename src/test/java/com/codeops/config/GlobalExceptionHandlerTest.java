@@ -9,10 +9,12 @@ import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -92,6 +94,26 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ErrorResponse> response = handler.handleCodeOps(new CodeOpsException("Something broke"));
         assertEquals(500, response.getStatusCode().value());
         assertEquals("An internal error occurred", response.getBody().message());
+    }
+
+    @Test
+    void handleMessageNotReadable_returns400() {
+        HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
+        when(ex.getMessage()).thenReturn("Cannot deserialize value of type `java.time.Instant`");
+
+        ResponseEntity<ErrorResponse> response = handler.handleMessageNotReadable(ex);
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("Malformed request body", response.getBody().message());
+    }
+
+    @Test
+    void handleNoResourceFound_returns404() throws NoResourceFoundException {
+        NoResourceFoundException ex = mock(NoResourceFoundException.class);
+        when(ex.getMessage()).thenReturn("No static resource api/v1/nonexistent.");
+
+        ResponseEntity<ErrorResponse> response = handler.handleNoResourceFound(ex);
+        assertEquals(404, response.getStatusCode().value());
+        assertEquals("Resource not found", response.getBody().message());
     }
 
     @Test

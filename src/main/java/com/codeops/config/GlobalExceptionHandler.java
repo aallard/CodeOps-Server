@@ -9,10 +9,12 @@ import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -128,6 +130,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleCodeOpsAuth(AuthorizationException ex) {
         log.warn("Authorization denied: {}", ex.getMessage());
         return ResponseEntity.status(403).body(new ErrorResponse(403, ex.getMessage()));
+    }
+
+    /**
+     * Handles malformed JSON or type-mismatch errors in request bodies by returning a 400
+     * response. Common causes include invalid enum values or unparseable date/time strings.
+     *
+     * @param ex the thrown HTTP message not readable exception
+     * @return a 400 response with an {@link ErrorResponse} body
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMessage());
+        return ResponseEntity.status(400).body(new ErrorResponse(400, "Malformed request body"));
+    }
+
+    /**
+     * Handles requests for unmapped paths that fall through to the static resource handler.
+     *
+     * @param ex the thrown no resource found exception
+     * @return a 404 response with an {@link ErrorResponse} body
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("No resource found: {}", ex.getMessage());
+        return ResponseEntity.status(404).body(new ErrorResponse(404, "Resource not found"));
     }
 
     /**
