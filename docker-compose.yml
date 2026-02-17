@@ -15,7 +15,6 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - codeops-postgres-data:/var/lib/postgresql/data
-      - ./init-scripts/postgres:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U codeops -d codeops"]
       interval: 10s
