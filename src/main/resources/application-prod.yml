@@ -23,10 +23,9 @@ codeops:
       enabled: true
       bucket: ${S3_BUCKET}
       region: ${AWS_REGION}
-    ses:
-      enabled: true
-      from-email: ${SES_FROM_EMAIL}
-      region: ${AWS_REGION}
+  mail:
+    enabled: true
+    from-email: ${MAIL_FROM_EMAIL}
 
 logging:
   level:

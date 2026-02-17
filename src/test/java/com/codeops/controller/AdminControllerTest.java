@@ -7,6 +7,7 @@ import com.codeops.dto.response.SystemSettingResponse;
 import com.codeops.dto.response.UserResponse;
 import com.codeops.service.AdminService;
 import com.codeops.service.AuditLogService;
+import com.codeops.service.MfaService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class AdminControllerTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private MfaService mfaService;
+
     private AdminController controller;
 
     private final UUID currentUserId = UUID.randomUUID();
@@ -51,7 +55,7 @@ class AdminControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new AdminController(adminService, auditLogService);
+        controller = new AdminController(adminService, auditLogService, mfaService);
         setSecurityContext(currentUserId);
     }
 
@@ -66,7 +70,7 @@ class AdminControllerTest {
     }
 
     private UserResponse userResponse(UUID id) {
-        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now, false);
+        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now, false, "NONE");
     }
 
     @Test
@@ -108,7 +112,7 @@ class AdminControllerTest {
     @Test
     void updateUserStatus_returns200WithUpdatedUserAndLogsAudit() {
         AdminUpdateUserRequest request = new AdminUpdateUserRequest(false);
-        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "Test User", null, false, now, now, false);
+        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "Test User", null, false, now, now, false, "NONE");
         when(adminService.updateUserStatus(targetUserId, request)).thenReturn(expected);
 
         ResponseEntity<UserResponse> response = controller.updateUserStatus(targetUserId, request);
@@ -211,5 +215,16 @@ class AdminControllerTest {
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(expected, response.getBody());
+    }
+
+    @Test
+    void resetUserMfa_returns200WithConfirmation() {
+        ResponseEntity<Map<String, Object>> response = controller.resetUserMfa(targetUserId);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("MFA reset successfully", response.getBody().get("message"));
+        assertEquals(targetUserId, response.getBody().get("userId"));
+        verify(mfaService).adminResetMfa(targetUserId);
+        verify(auditLogService).log(currentUserId, null, "ADMIN_MFA_RESET", "USER", targetUserId, null);
     }
 }

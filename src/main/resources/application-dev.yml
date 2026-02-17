@@ -38,10 +38,9 @@ codeops:
       enabled: false
       bucket: codeops-dev
       region: us-east-1
-    ses:
-      enabled: false
-      from-email: noreply@codeops.dev
-      region: us-east-1
+  mail:
+    enabled: false
+    from-email: noreply@codeops.dev
 
   local-storage:
     path: ${user.home}/.codeops/storage

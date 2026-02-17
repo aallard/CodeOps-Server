@@ -1,3 +1,3 @@
 package com.codeops.dto.response;
 
-public record MfaStatusResponse(boolean mfaEnabled) {}
+public record MfaStatusResponse(boolean mfaEnabled, String mfaMethod, Integer recoveryCodesRemaining) {}

@@ -7,7 +7,11 @@ import com.codeops.dto.request.RefreshTokenRequest;
 import com.codeops.dto.request.RegisterRequest;
 import com.codeops.dto.response.AuthResponse;
 import com.codeops.dto.response.UserResponse;
+import com.codeops.entity.MfaEmailCode;
 import com.codeops.entity.User;
+import com.codeops.entity.enums.MfaMethod;
+import com.codeops.notification.EmailService;
+import com.codeops.repository.MfaEmailCodeRepository;
 import com.codeops.repository.TeamMemberRepository;
 import com.codeops.repository.UserRepository;
 import com.codeops.security.JwtTokenProvider;
@@ -20,7 +24,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,10 +48,15 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    private static final int EMAIL_CODE_LENGTH = 6;
+    private static final int EMAIL_CODE_TTL_MINUTES = 10;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final TeamMemberRepository teamMemberRepository;
+    private final MfaEmailCodeRepository mfaEmailCodeRepository;
+    private final EmailService emailService;
 
     /**
      * Registers a new user account, hashes the password with BCrypt, and issues JWT tokens.
@@ -113,9 +124,26 @@ public class AuthService {
 
         // MFA-enabled accounts get a challenge token instead of full tokens
         if (Boolean.TRUE.equals(user.getMfaEnabled())) {
-            log.info("MFA challenge issued for userId={}", user.getId());
-            String challengeToken = jwtTokenProvider.generateMfaChallengeToken(user);
-            return AuthResponse.mfaChallenge(challengeToken);
+            // Defensive fallback: if MFA is marked enabled but the method data is corrupt, bypass MFA
+            if (user.getMfaMethod() == MfaMethod.TOTP && user.getMfaSecret() == null) {
+                log.error("MFA SAFETY FALLBACK: mfaEnabled=true but mfaSecret is null for userId={}. Bypassing MFA.", user.getId());
+            } else if (user.getMfaMethod() == MfaMethod.EMAIL) {
+                // Email MFA: generate challenge token and send code
+                log.info("Email MFA challenge issued for userId={}", user.getId());
+                String challengeToken = jwtTokenProvider.generateMfaChallengeToken(user);
+                String code = generateEmailCode();
+                saveEmailCode(user.getId(), code);
+                emailService.sendMfaCode(user.getEmail(), code);
+                String maskedEmail = maskEmail(user.getEmail());
+                return AuthResponse.emailMfaChallenge(challengeToken, maskedEmail);
+            } else if (user.getMfaMethod() == MfaMethod.TOTP) {
+                log.info("TOTP MFA challenge issued for userId={}", user.getId());
+                String challengeToken = jwtTokenProvider.generateMfaChallengeToken(user);
+                return AuthResponse.mfaChallenge(challengeToken);
+            } else {
+                // MFA enabled but method is NONE — should not happen, bypass MFA
+                log.error("MFA SAFETY FALLBACK: mfaEnabled=true but mfaMethod=NONE for userId={}. Bypassing MFA.", user.getId());
+            }
         }
 
         user.setLastLoginAt(Instant.now());
@@ -219,6 +247,35 @@ public class AuthService {
         }
     }
 
+    private String generateEmailCode() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder code = new StringBuilder();
+        for (int i = 0; i < EMAIL_CODE_LENGTH; i++) {
+            code.append(random.nextInt(10));
+        }
+        return code.toString();
+    }
+
+    private void saveEmailCode(UUID userId, String code) {
+        MfaEmailCode emailCode = MfaEmailCode.builder()
+                .userId(userId)
+                .codeHash(passwordEncoder.encode(code))
+                .expiresAt(Instant.now().plus(EMAIL_CODE_TTL_MINUTES, ChronoUnit.MINUTES))
+                .build();
+        mfaEmailCodeRepository.save(emailCode);
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return "***";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return email.charAt(0) + "***" + email.substring(atIndex);
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
+    }
+
     private List<String> getUserRoles(UUID userId) {
         return teamMemberRepository.findByUserId(userId).stream()
                 .map(member -> member.getRole().name())
@@ -235,7 +292,8 @@ public class AuthService {
                 user.getIsActive(),
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
-                user.getMfaEnabled()
+                user.getMfaEnabled(),
+                user.getMfaMethod() != null ? user.getMfaMethod().name() : "NONE"
         );
     }
 }

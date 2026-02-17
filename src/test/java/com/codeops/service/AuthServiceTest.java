@@ -5,9 +5,13 @@ import com.codeops.dto.request.LoginRequest;
 import com.codeops.dto.request.RefreshTokenRequest;
 import com.codeops.dto.request.RegisterRequest;
 import com.codeops.dto.response.AuthResponse;
+import com.codeops.entity.MfaEmailCode;
 import com.codeops.entity.TeamMember;
 import com.codeops.entity.User;
+import com.codeops.entity.enums.MfaMethod;
 import com.codeops.entity.enums.TeamRole;
+import com.codeops.notification.EmailService;
+import com.codeops.repository.MfaEmailCodeRepository;
 import com.codeops.repository.TeamMemberRepository;
 import com.codeops.repository.UserRepository;
 import com.codeops.security.JwtTokenProvider;
@@ -39,6 +43,8 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private TeamMemberRepository teamMemberRepository;
+    @Mock private MfaEmailCodeRepository mfaEmailCodeRepository;
+    @Mock private EmailService emailService;
 
     @InjectMocks
     private AuthService authService;
@@ -54,6 +60,7 @@ class AuthServiceTest {
                 .passwordHash("encoded-password")
                 .displayName("Test User")
                 .isActive(true)
+                .mfaMethod(MfaMethod.NONE)
                 .build();
         testUser.setId(userId);
         testUser.setCreatedAt(Instant.now());
@@ -175,8 +182,10 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_mfaEnabled_returnsChallengeToken() {
+    void login_totpMfaEnabled_returnsChallengeToken() {
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
+        testUser.setMfaSecret("encrypted-secret");
         LoginRequest request = new LoginRequest("test@codeops.dev", "password");
         when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
@@ -190,8 +199,30 @@ class AuthServiceTest {
         assertNull(response.token());
         assertNull(response.refreshToken());
         assertNull(response.user());
+        assertNull(response.maskedEmail());
         verify(jwtTokenProvider).generateMfaChallengeToken(testUser);
         verify(jwtTokenProvider, never()).generateToken(any(User.class), anyList());
+    }
+
+    @Test
+    void login_emailMfaEnabled_returnsChallengeTokenAndMaskedEmail() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        LoginRequest request = new LoginRequest("test@codeops.dev", "password");
+        when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(jwtTokenProvider.generateMfaChallengeToken(testUser)).thenReturn("mfa-challenge-token");
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed-code");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertTrue(response.mfaRequired());
+        assertEquals("mfa-challenge-token", response.mfaChallengeToken());
+        assertEquals("t***@codeops.dev", response.maskedEmail());
+        assertNull(response.token());
+        verify(emailService).sendMfaCode(eq("test@codeops.dev"), anyString());
+        verify(mfaEmailCodeRepository).save(any(MfaEmailCode.class));
     }
 
     @Test
@@ -211,6 +242,47 @@ class AuthServiceTest {
         assertNotNull(response.user());
         assertNull(response.mfaRequired());
         assertNull(response.mfaChallengeToken());
+    }
+
+    @Test
+    void login_totpMfaEnabled_nullSecret_bypassesMfa() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
+        testUser.setMfaSecret(null); // corrupt state
+        LoginRequest request = new LoginRequest("test@codeops.dev", "password");
+        when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(teamMemberRepository.findByUserId(userId)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(eq(testUser), anyList())).thenReturn("token");
+        when(jwtTokenProvider.generateRefreshToken(testUser)).thenReturn("refresh");
+
+        AuthResponse response = authService.login(request);
+
+        // Should bypass MFA and return full tokens
+        assertNotNull(response.token());
+        assertNotNull(response.refreshToken());
+        assertNotNull(response.user());
+        assertNull(response.mfaRequired());
+        verify(jwtTokenProvider, never()).generateMfaChallengeToken(any());
+    }
+
+    @Test
+    void login_mfaEnabledMethodNone_bypassesMfa() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.NONE); // corrupt state
+        LoginRequest request = new LoginRequest("test@codeops.dev", "password");
+        when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(teamMemberRepository.findByUserId(userId)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(eq(testUser), anyList())).thenReturn("token");
+        when(jwtTokenProvider.generateRefreshToken(testUser)).thenReturn("refresh");
+
+        AuthResponse response = authService.login(request);
+
+        // Should bypass MFA and return full tokens
+        assertNotNull(response.token());
+        assertNotNull(response.user());
+        verify(jwtTokenProvider, never()).generateMfaChallengeToken(any());
     }
 
     @Test

@@ -229,12 +229,12 @@ paths:
     post:
       tags: [Authentication]
       operationId: mfaLogin
-      summary: Complete MFA-challenged login with TOTP code or recovery code
+      summary: Complete MFA-challenged login with TOTP code, email code, or recovery code
       security: []
       description: >-
         Publicly accessible. Submits the MFA challenge token (from login) along
-        with a 6-digit TOTP code or 8-digit recovery code. On success, returns
-        full access and refresh tokens.
+        with a 6-digit TOTP code, 6-digit email code, or 8-digit recovery code.
+        On success, returns full access and refresh tokens.
       requestBody:
         required: true
         content:
@@ -257,8 +257,8 @@ paths:
       operationId: mfaDisable
       summary: Disable MFA for the current user
       description: >-
-        Requires authentication. Clears the TOTP secret and recovery codes.
-        The user must provide their current password for re-verification.
+        Requires authentication. Clears the TOTP secret, email codes, and recovery codes.
+        Resets the MFA method to NONE. The user must provide their current password.
       requestBody:
         required: true
         content:
@@ -311,6 +311,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MfaStatusResponse'
+
+  /api/v1/auth/mfa/setup/email:
+    post:
+      tags: [Authentication]
+      operationId: emailMfaSetup
+      summary: Initiate email MFA setup (generates recovery codes and sends verification code)
+      description: >-
+        Requires authentication. The user must provide their current password.
+        Generates 8 one-time recovery codes, sets the MFA method to EMAIL, and sends a
+        6-digit verification code to the user's registered email.
+        MFA is NOT enabled until verified via /mfa/verify-setup/email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaEmailSetupRequest'
+      responses:
+        '200':
+          description: Email MFA setup initiated, recovery codes returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaRecoveryResponse'
+        '400':
+          description: MFA already enabled or wrong password
+
+  /api/v1/auth/mfa/verify-setup/email:
+    post:
+      tags: [Authentication]
+      operationId: emailMfaVerifySetup
+      summary: Verify email code and enable email MFA
+      description: >-
+        Requires authentication. Second step of email MFA setup — submits the 6-digit
+        code received via email to activate email MFA on the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: Email MFA enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaStatusResponse'
+        '400':
+          description: Invalid code or email MFA setup not initiated
+
+  /api/v1/auth/mfa/resend:
+    post:
+      tags: [Authentication]
+      operationId: mfaResendCode
+      summary: Resend MFA login code to the user's email
+      security: []
+      description: >-
+        Publicly accessible. Sends a new 6-digit MFA code to the user's email during
+        the email MFA login flow. Requires a valid MFA challenge token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaResendRequest'
+      responses:
+        '200':
+          description: Code resent
+        '400':
+          description: Invalid challenge token or email MFA not enabled
 
   # ──────────────────────────────────────────────
   # Admin
@@ -483,6 +554,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageAuditLogResponse'
+
+  /api/v1/admin/users/{userId}/reset-mfa:
+    post:
+      tags: [Admin]
+      operationId: adminResetUserMfa
+      summary: Force-reset MFA for a user (admin only)
+      description: >-
+        Requires authentication with admin privileges. Force-disables MFA for the
+        target user without requiring their password. Used when a user is locked out.
+        Logs an ADMIN_MFA_RESET audit entry.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: MFA reset confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: MFA reset successfully
+                  userId:
+                    type: string
+                    format: uuid
+        '404':
+          description: User not found
 
   # ──────────────────────────────────────────────
   # Users
@@ -3457,7 +3561,7 @@ components:
       properties:
         code:
           type: string
-          description: 6-digit TOTP code from authenticator app
+          description: 6-digit TOTP code from authenticator app, or 6-digit email verification code
 
     MfaLoginRequest:
       type: object
@@ -3468,7 +3572,7 @@ components:
           description: MFA challenge JWT token received from login
         code:
           type: string
-          description: 6-digit TOTP code or 8-digit recovery code
+          description: 6-digit TOTP code, 6-digit email code, or 8-digit recovery code
 
     MfaSetupResponse:
       type: object
@@ -3490,6 +3594,30 @@ components:
       properties:
         mfaEnabled:
           type: boolean
+        mfaMethod:
+          type: string
+          enum: [NONE, TOTP, EMAIL]
+          description: The active MFA method
+        recoveryCodesRemaining:
+          type: integer
+          description: Number of unused recovery codes remaining (null when MFA disabled)
+          nullable: true
+
+    MfaEmailSetupRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          description: Current account password for re-verification
+
+    MfaResendRequest:
+      type: object
+      required: [challengeToken]
+      properties:
+        challengeToken:
+          type: string
+          description: MFA challenge JWT token received from login
 
     MfaRecoveryResponse:
       type: object
@@ -4220,6 +4348,7 @@ components:
       description: >-
         Authentication response. For normal logins, contains token, refreshToken, and user.
         When MFA is required, contains mfaRequired=true and mfaChallengeToken instead.
+        For email MFA challenges, also includes maskedEmail.
       properties:
         token:
           type: string
@@ -4231,10 +4360,13 @@ components:
           $ref: '#/components/schemas/UserResponse'
         mfaRequired:
           type: boolean
-          description: True when the user has MFA enabled and must complete TOTP verification
+          description: True when the user has MFA enabled and must complete verification
         mfaChallengeToken:
           type: string
           description: Short-lived JWT challenge token for MFA login (5 min expiry)
+        maskedEmail:
+          type: string
+          description: Masked email address for email MFA challenges (e.g., "a***@example.com")
 
     UserResponse:
       type: object
@@ -4253,6 +4385,10 @@ components:
         mfaEnabled:
           type: boolean
           description: Whether multi-factor authentication is enabled on this account
+        mfaMethod:
+          type: string
+          enum: [NONE, TOTP, EMAIL]
+          description: The active MFA method for this account
         lastLoginAt:
           type: string
           format: date-time

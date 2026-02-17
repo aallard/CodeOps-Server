@@ -1,5 +1,6 @@
 package com.codeops.entity;
 
+import com.codeops.entity.enums.MfaMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,6 +37,11 @@ public class User extends BaseEntity {
     @Builder.Default
     @Column(name = "mfa_enabled", nullable = false)
     private Boolean mfaEnabled = false;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mfa_method", nullable = false, length = 10)
+    private MfaMethod mfaMethod = MfaMethod.NONE;
 
     @Column(name = "mfa_secret", length = 500)
     private String mfaSecret;

@@ -9,6 +9,7 @@ import com.codeops.dto.response.UserResponse;
 import com.codeops.security.SecurityUtils;
 import com.codeops.service.AdminService;
 import com.codeops.service.AuditLogService;
+import com.codeops.service.MfaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class AdminController {
 
     private final AdminService adminService;
     private final AuditLogService auditLogService;
+    private final MfaService mfaService;
 
     /**
      * Retrieves a paginated list of all users in the system.
@@ -191,5 +193,25 @@ public class AdminController {
         log.debug("getUserAuditLog called with userId={}, page={}, size={}", userId, page, size);
         Pageable pageable = PageRequest.of(page, Math.min(size, AppConstants.MAX_PAGE_SIZE));
         return ResponseEntity.ok(auditLogService.getUserAuditLog(userId, pageable));
+    }
+
+    /**
+     * Force-resets MFA for a target user without requiring the user's password.
+     *
+     * <p>POST {@code /api/v1/admin/users/{userId}/reset-mfa}</p>
+     *
+     * <p>This is an emergency operation for when a user is locked out of their account
+     * due to lost MFA devices or corrupted MFA state. Side effect: logs an
+     * {@code ADMIN_MFA_RESET} audit entry.</p>
+     *
+     * @param userId the UUID of the user whose MFA should be reset
+     * @return HTTP 200 OK with confirmation message
+     */
+    @PostMapping("/users/{userId}/reset-mfa")
+    public ResponseEntity<Map<String, Object>> resetUserMfa(@PathVariable UUID userId) {
+        log.debug("resetUserMfa called with userId={}", userId);
+        mfaService.adminResetMfa(userId);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "ADMIN_MFA_RESET", "USER", userId, null);
+        return ResponseEntity.ok(Map.of("message", "MFA reset successfully", "userId", userId));
     }
 }

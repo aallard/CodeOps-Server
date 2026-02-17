@@ -35,10 +35,9 @@ codeops:
       enabled: false
       bucket: test-bucket
       region: us-east-1
-    ses:
-      enabled: false
-      from-email: test@codeops.dev
-      region: us-east-1
+  mail:
+    enabled: false
+    from-email: test@codeops.dev
   local-storage:
     path: ${java.io.tmpdir}/codeops-integration-test-storage
 

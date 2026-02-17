@@ -1,10 +1,7 @@
 package com.codeops.controller;
 
 import com.codeops.dto.request.*;
-import com.codeops.dto.response.AuthResponse;
-import com.codeops.dto.response.MfaRecoveryResponse;
-import com.codeops.dto.response.MfaSetupResponse;
-import com.codeops.dto.response.MfaStatusResponse;
+import com.codeops.dto.response.*;
 import com.codeops.security.JwtTokenProvider;
 import com.codeops.security.SecurityUtils;
 import com.codeops.service.AuditLogService;
@@ -263,5 +260,68 @@ public class AuthController {
         log.debug("getMfaStatus called");
         MfaStatusResponse response = mfaService.getMfaStatus();
         return ResponseEntity.ok(response);
+    }
+
+    // ──────────────────────────────────────────────
+    // Email MFA Endpoints
+    // ──────────────────────────────────────────────
+
+    /**
+     * Initiates email MFA setup by generating recovery codes and sending a verification
+     * code to the user's registered email.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/setup/email}</p>
+     *
+     * <p>Requires authentication. The user must provide their current password for re-verification.</p>
+     *
+     * @param request the email MFA setup payload containing the user's current password
+     * @return the recovery response containing recovery codes
+     */
+    @PostMapping("/mfa/setup/email")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaRecoveryResponse> setupEmailMfa(@Valid @RequestBody MfaEmailSetupRequest request) {
+        log.debug("setupEmailMfa called");
+        MfaRecoveryResponse response = mfaService.setupEmailMfa(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "EMAIL_MFA_SETUP_INITIATED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Verifies the email code sent during email MFA setup and enables email MFA.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/verify-setup/email}</p>
+     *
+     * <p>Requires authentication.</p>
+     *
+     * @param request the verify payload containing the email code
+     * @return the MFA status response confirming email MFA is enabled
+     */
+    @PostMapping("/mfa/verify-setup/email")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaStatusResponse> verifyEmailSetup(@Valid @RequestBody MfaVerifyRequest request) {
+        log.debug("verifyEmailSetup called");
+        MfaStatusResponse response = mfaService.verifyEmailSetupAndEnable(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "EMAIL_MFA_ENABLED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Resends an MFA login code to the user's email during the email MFA login flow.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/resend}</p>
+     *
+     * <p>Publicly accessible (no Bearer token required) since the user hasn't completed
+     * MFA authentication yet. Requires a valid MFA challenge token.</p>
+     *
+     * @param request the resend payload containing the challenge token
+     * @return HTTP 200 OK on successful code resend
+     */
+    @PostMapping("/mfa/resend")
+    public ResponseEntity<Void> resendMfaCode(@Valid @RequestBody MfaResendRequest request) {
+        log.debug("resendMfaCode called");
+        mfaService.sendLoginMfaCode(request);
+        return ResponseEntity.ok().build();
     }
 }

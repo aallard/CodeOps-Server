@@ -72,7 +72,7 @@ class AuthControllerTest {
     }
 
     private UserResponse userResponse() {
-        return new UserResponse(userId, "test@example.com", "Test User", null, true, now, now, false);
+        return new UserResponse(userId, "test@example.com", "Test User", null, true, now, now, false, "NONE");
     }
 
     @Test

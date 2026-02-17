@@ -169,7 +169,8 @@ public class UserService {
                 user.getIsActive(),
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
-                user.getMfaEnabled()
+                user.getMfaEnabled(),
+                user.getMfaMethod() != null ? user.getMfaMethod().name() : "NONE"
         );
     }
 }

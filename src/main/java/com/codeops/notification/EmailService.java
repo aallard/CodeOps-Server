@@ -1,87 +1,84 @@
 package com.codeops.notification;
 
+import com.codeops.config.MailProperties;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.*;
-
 import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * Service for sending transactional emails via AWS Simple Email Service (SES).
+ * Service for sending transactional emails via Spring {@link JavaMailSender} (SMTP).
  *
- * <p>When SES is disabled ({@code codeops.aws.ses.enabled=false}, the default for local
- * development), all email sends are logged to the console at INFO level instead of being
- * dispatched. When enabled, emails are sent as UTF-8 HTML via the configured SES client.</p>
+ * <p>When mail is disabled ({@code codeops.mail.enabled=false}, the default for local
+ * development), all email sends are logged to the console at WARN level instead of being
+ * dispatched. When enabled, emails are sent as UTF-8 HTML via the configured SMTP server.</p>
  *
- * <p>All SES send failures are caught and logged at ERROR level without propagating to callers,
+ * <p>All SMTP send failures are caught and logged at ERROR level without propagating to callers,
  * ensuring email delivery issues do not disrupt application workflows.</p>
  *
- * @see com.codeops.config.SesConfig
+ * @see MailProperties
  * @see NotificationDispatcher
  */
 @Service
 @Slf4j
 public class EmailService {
 
-    private final SesClient sesClient;
-    private final boolean sesEnabled;
-    private final String fromEmail;
+    private final JavaMailSender mailSender;
+    private final MailProperties mailProperties;
 
     /**
-     * Constructs the email service with optional SES client injection.
+     * Constructs the email service with optional JavaMailSender injection.
      *
-     * <p>The {@code sesClient} parameter is injected only when the SES bean is available
-     * (i.e., when {@code codeops.aws.ses.enabled=true}); otherwise it is {@code null}.</p>
+     * <p>The {@code mailSender} parameter is injected only when the Spring Mail auto-configuration
+     * creates the bean (i.e., when {@code spring.mail.host} is configured); otherwise it is {@code null}.</p>
      *
-     * @param sesClient  the AWS SES client, or {@code null} if SES is not enabled
-     * @param sesEnabled whether SES email sending is enabled
-     * @param fromEmail  the sender email address for outbound emails
+     * @param mailSender     the Spring JavaMailSender, or {@code null} if SMTP is not configured
+     * @param mailProperties the CodeOps mail configuration properties
      */
     public EmailService(
-            @Autowired(required = false) SesClient sesClient,
-            @Value("${codeops.aws.ses.enabled:false}") boolean sesEnabled,
-            @Value("${codeops.aws.ses.from-email:noreply@codeops.dev}") String fromEmail) {
-        this.sesClient = sesClient;
-        this.sesEnabled = sesEnabled;
-        this.fromEmail = fromEmail;
+            @Autowired(required = false) JavaMailSender mailSender,
+            MailProperties mailProperties) {
+        this.mailSender = mailSender;
+        this.mailProperties = mailProperties;
     }
 
     /**
-     * Sends an HTML email to the specified recipient via SES, or logs the send attempt
-     * if SES is disabled.
+     * Sends an HTML email to the specified recipient via SMTP, or logs the send attempt
+     * if mail is disabled.
      *
-     * <p>SES failures are caught and logged at ERROR level without re-throwing.</p>
+     * <p>SMTP failures are caught and logged at ERROR level without re-throwing.</p>
      *
      * @param toEmail  the recipient email address
      * @param subject  the email subject line
      * @param htmlBody the HTML content of the email body
      */
     public void sendEmail(String toEmail, String subject, String htmlBody) {
-        if (!sesEnabled) {
-            log.warn("SES disabled — email logged instead of sent: to={}, subject={}", toEmail, subject);
+        if (!mailProperties.isEnabled()) {
+            log.warn("Mail disabled — email logged instead of sent: to={}, subject={}", toEmail, subject);
+            return;
+        }
+        if (mailSender == null) {
+            log.error("Mail enabled but JavaMailSender is not configured — cannot send email to={}", toEmail);
             return;
         }
         try {
-            SendEmailRequest request = SendEmailRequest.builder()
-                    .destination(Destination.builder().toAddresses(List.of(toEmail)).build())
-                    .message(Message.builder()
-                            .subject(Content.builder().data(subject).charset("UTF-8").build())
-                            .body(Body.builder()
-                                    .html(Content.builder().data(htmlBody).charset("UTF-8").build())
-                                    .build())
-                            .build())
-                    .source(fromEmail)
-                    .build();
-            sesClient.sendEmail(request);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(mailProperties.getFromEmail());
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            mailSender.send(message);
             log.info("Email sent successfully: to={}, subject={}", toEmail, subject);
-        } catch (SesException e) {
-            log.error("SES send failure: to={}, error={}", toEmail, e.getMessage(), e);
+        } catch (MessagingException | org.springframework.mail.MailException e) {
+            log.error("SMTP send failure: to={}, error={}", toEmail, e.getMessage(), e);
         }
     }
 
@@ -144,5 +141,23 @@ public class EmailService {
         }
         html.append("</table>");
         sendEmail(toEmail, "CodeOps — Weekly Health Digest: " + HtmlUtils.htmlEscape(teamName), html.toString());
+    }
+
+    /**
+     * Sends an MFA verification code email to the specified recipient.
+     *
+     * <p>The code is displayed in a large, monospaced font for easy reading. The email
+     * includes a note about the code's 10-minute expiration.</p>
+     *
+     * @param toEmail the recipient email address
+     * @param code    the 6-digit MFA verification code
+     */
+    public void sendMfaCode(String toEmail, String code) {
+        String htmlBody = "<h2>Your CodeOps Verification Code</h2>"
+                + "<p>Your verification code is:</p>"
+                + "<p style=\"font-size: 32px; font-family: monospace; font-weight: bold; letter-spacing: 8px;\">"
+                + HtmlUtils.htmlEscape(code) + "</p>"
+                + "<p>This code expires in 10 minutes. If you did not request this code, you can safely ignore this email.</p>";
+        sendEmail(toEmail, "CodeOps — Verification Code", htmlBody);
     }
 }

@@ -1,13 +1,19 @@
 package com.codeops.service;
 
+import com.codeops.dto.request.MfaEmailSetupRequest;
 import com.codeops.dto.request.MfaLoginRequest;
+import com.codeops.dto.request.MfaResendRequest;
 import com.codeops.dto.request.MfaSetupRequest;
 import com.codeops.dto.request.MfaVerifyRequest;
 import com.codeops.dto.response.AuthResponse;
 import com.codeops.dto.response.MfaRecoveryResponse;
 import com.codeops.dto.response.MfaSetupResponse;
 import com.codeops.dto.response.MfaStatusResponse;
+import com.codeops.entity.MfaEmailCode;
 import com.codeops.entity.User;
+import com.codeops.entity.enums.MfaMethod;
+import com.codeops.notification.EmailService;
+import com.codeops.repository.MfaEmailCodeRepository;
 import com.codeops.repository.TeamMemberRepository;
 import com.codeops.repository.UserRepository;
 import com.codeops.security.JwtTokenProvider;
@@ -17,7 +23,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -27,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +49,8 @@ class MfaServiceTest {
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private EncryptionService encryptionService;
     @Mock private TeamMemberRepository teamMemberRepository;
+    @Mock private MfaEmailCodeRepository mfaEmailCodeRepository;
+    @Mock private EmailService emailService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
@@ -60,6 +68,7 @@ class MfaServiceTest {
                 .displayName("Test User")
                 .isActive(true)
                 .mfaEnabled(false)
+                .mfaMethod(MfaMethod.NONE)
                 .build();
         testUser.setId(userId);
         testUser.setCreatedAt(Instant.now());
@@ -76,7 +85,7 @@ class MfaServiceTest {
     }
 
     // ──────────────────────────────────────────────
-    // setupMfa
+    // setupMfa (TOTP)
     // ──────────────────────────────────────────────
 
     @Test
@@ -150,23 +159,19 @@ class MfaServiceTest {
     }
 
     // ──────────────────────────────────────────────
-    // verifyAndEnableMfa
+    // verifyAndEnableMfa (TOTP)
     // ──────────────────────────────────────────────
 
     @Test
-    void verifyAndEnableMfa_validCode_enablesMfa() {
+    void verifyAndEnableMfa_invalidCode_throws() {
         setSecurityContext(userId);
         testUser.setMfaSecret("encrypted-secret");
-        MfaVerifyRequest request = new MfaVerifyRequest("123456");
+        MfaVerifyRequest request = new MfaVerifyRequest("000000");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(encryptionService.decrypt("encrypted-secret")).thenReturn("JBSWY3DPEHPK3PXP");
 
-        // We can't easily mock the TOTP verifier, but we can verify the flow
-        // by testing the error case (invalid code is more reliable to test)
-        // The valid code test requires a real TOTP code
-        MfaVerifyRequest badRequest = new MfaVerifyRequest("000000");
-        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyAndEnableMfa(badRequest));
+        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyAndEnableMfa(request));
     }
 
     @Test
@@ -202,7 +207,7 @@ class MfaServiceTest {
     }
 
     // ──────────────────────────────────────────────
-    // verifyMfaLogin
+    // verifyMfaLogin (TOTP)
     // ──────────────────────────────────────────────
 
     @Test
@@ -249,8 +254,9 @@ class MfaServiceTest {
     }
 
     @Test
-    void verifyMfaLogin_invalidCode_throws() {
+    void verifyMfaLogin_invalidTotpCode_throws() {
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
         testUser.setMfaSecret("encrypted-secret");
         MfaLoginRequest request = new MfaLoginRequest("challenge-token", "000000");
 
@@ -266,6 +272,7 @@ class MfaServiceTest {
     @Test
     void verifyMfaLogin_validRecoveryCode_succeeds() {
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
         testUser.setMfaSecret("encrypted-secret");
         testUser.setMfaRecoveryCodes("encrypted-codes");
         MfaLoginRequest request = new MfaLoginRequest("challenge-token", "12345678");
@@ -287,13 +294,13 @@ class MfaServiceTest {
         assertEquals("access-token", response.token());
         assertEquals("refresh-token", response.refreshToken());
         assertNotNull(response.user());
-        // Recovery code should be consumed — save called with updated codes
         verify(userRepository, atLeast(1)).save(testUser);
     }
 
     @Test
     void verifyMfaLogin_invalidRecoveryCode_throws() {
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
         testUser.setMfaSecret("encrypted-secret");
         testUser.setMfaRecoveryCodes("encrypted-codes");
         MfaLoginRequest request = new MfaLoginRequest("challenge-token", "99999999");
@@ -309,6 +316,249 @@ class MfaServiceTest {
     }
 
     // ──────────────────────────────────────────────
+    // verifyMfaLogin (Email)
+    // ──────────────────────────────────────────────
+
+    @Test
+    void verifyMfaLogin_emailMethod_validCode_succeeds() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        MfaLoginRequest request = new MfaLoginRequest("challenge-token", "654321");
+
+        MfaEmailCode emailCode = MfaEmailCode.builder()
+                .userId(userId)
+                .codeHash("hashed-654321")
+                .expiresAt(Instant.now().plus(5, ChronoUnit.MINUTES))
+                .used(false)
+                .build();
+
+        when(jwtTokenProvider.validateToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.isMfaChallengeToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("challenge-token")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(mfaEmailCodeRepository.findByUserIdAndUsedFalseAndExpiresAtAfter(eq(userId), any(Instant.class)))
+                .thenReturn(List.of(emailCode));
+        when(passwordEncoder.matches("654321", "hashed-654321")).thenReturn(true);
+        when(teamMemberRepository.findByUserId(userId)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(any(User.class), anyList())).thenReturn("access-token");
+        when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
+
+        AuthResponse response = mfaService.verifyMfaLogin(request);
+
+        assertNotNull(response.token());
+        assertTrue(emailCode.isUsed());
+        verify(mfaEmailCodeRepository).save(emailCode);
+    }
+
+    @Test
+    void verifyMfaLogin_emailMethod_invalidCode_throws() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        MfaLoginRequest request = new MfaLoginRequest("challenge-token", "000000");
+
+        when(jwtTokenProvider.validateToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.isMfaChallengeToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("challenge-token")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(mfaEmailCodeRepository.findByUserIdAndUsedFalseAndExpiresAtAfter(eq(userId), any(Instant.class)))
+                .thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyMfaLogin(request));
+    }
+
+    @Test
+    void verifyMfaLogin_emailMethod_recoveryCode_succeeds() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        testUser.setMfaRecoveryCodes("encrypted-codes");
+        MfaLoginRequest request = new MfaLoginRequest("challenge-token", "12345678");
+
+        when(jwtTokenProvider.validateToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.isMfaChallengeToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("challenge-token")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(mfaEmailCodeRepository.findByUserIdAndUsedFalseAndExpiresAtAfter(eq(userId), any(Instant.class)))
+                .thenReturn(List.of());
+        when(encryptionService.decrypt("encrypted-codes")).thenReturn("[\"12345678\",\"87654321\"]");
+        when(encryptionService.encrypt(anyString())).thenReturn("encrypted-updated");
+        when(teamMemberRepository.findByUserId(userId)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(any(User.class), anyList())).thenReturn("access-token");
+        when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
+
+        AuthResponse response = mfaService.verifyMfaLogin(request);
+
+        assertNotNull(response.token());
+    }
+
+    // ──────────────────────────────────────────────
+    // setupEmailMfa
+    // ──────────────────────────────────────────────
+
+    @Test
+    void setupEmailMfa_success_returnsRecoveryCodes() {
+        setSecurityContext(userId);
+        MfaEmailSetupRequest request = new MfaEmailSetupRequest("password");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(encryptionService.encrypt(anyString())).thenReturn("encrypted");
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed-code");
+
+        MfaRecoveryResponse response = mfaService.setupEmailMfa(request);
+
+        assertNotNull(response.recoveryCodes());
+        assertEquals(8, response.recoveryCodes().size());
+        assertEquals(MfaMethod.EMAIL, testUser.getMfaMethod());
+        assertFalse(testUser.getMfaEnabled());
+        verify(emailService).sendMfaCode(eq("test@codeops.dev"), anyString());
+        verify(mfaEmailCodeRepository).save(any(MfaEmailCode.class));
+    }
+
+    @Test
+    void setupEmailMfa_mfaAlreadyEnabled_throws() {
+        setSecurityContext(userId);
+        testUser.setMfaEnabled(true);
+        MfaEmailSetupRequest request = new MfaEmailSetupRequest("password");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.setupEmailMfa(request));
+    }
+
+    @Test
+    void setupEmailMfa_wrongPassword_throws() {
+        setSecurityContext(userId);
+        MfaEmailSetupRequest request = new MfaEmailSetupRequest("wrong");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("wrong", "encoded-password")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.setupEmailMfa(request));
+    }
+
+    @Test
+    void setupEmailMfa_userNotFound_throws() {
+        setSecurityContext(userId);
+        MfaEmailSetupRequest request = new MfaEmailSetupRequest("password");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> mfaService.setupEmailMfa(request));
+    }
+
+    // ──────────────────────────────────────────────
+    // verifyEmailSetupAndEnable
+    // ──────────────────────────────────────────────
+
+    @Test
+    void verifyEmailSetupAndEnable_validCode_enablesMfa() {
+        setSecurityContext(userId);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        testUser.setMfaRecoveryCodes("encrypted-codes");
+        MfaVerifyRequest request = new MfaVerifyRequest("123456");
+
+        MfaEmailCode emailCode = MfaEmailCode.builder()
+                .userId(userId)
+                .codeHash("hashed-123456")
+                .expiresAt(Instant.now().plus(5, ChronoUnit.MINUTES))
+                .used(false)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(mfaEmailCodeRepository.findByUserIdAndUsedFalseAndExpiresAtAfter(eq(userId), any(Instant.class)))
+                .thenReturn(List.of(emailCode));
+        when(passwordEncoder.matches("123456", "hashed-123456")).thenReturn(true);
+        when(encryptionService.decrypt("encrypted-codes")).thenReturn("[\"11111111\",\"22222222\"]");
+
+        MfaStatusResponse response = mfaService.verifyEmailSetupAndEnable(request);
+
+        assertTrue(response.mfaEnabled());
+        assertEquals("EMAIL", response.mfaMethod());
+        assertEquals(2, response.recoveryCodesRemaining());
+        assertTrue(testUser.getMfaEnabled());
+    }
+
+    @Test
+    void verifyEmailSetupAndEnable_invalidCode_throws() {
+        setSecurityContext(userId);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        MfaVerifyRequest request = new MfaVerifyRequest("000000");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(mfaEmailCodeRepository.findByUserIdAndUsedFalseAndExpiresAtAfter(eq(userId), any(Instant.class)))
+                .thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyEmailSetupAndEnable(request));
+    }
+
+    @Test
+    void verifyEmailSetupAndEnable_mfaAlreadyEnabled_throws() {
+        setSecurityContext(userId);
+        testUser.setMfaEnabled(true);
+        MfaVerifyRequest request = new MfaVerifyRequest("123456");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyEmailSetupAndEnable(request));
+    }
+
+    @Test
+    void verifyEmailSetupAndEnable_notEmailMethod_throws() {
+        setSecurityContext(userId);
+        testUser.setMfaMethod(MfaMethod.NONE);
+        MfaVerifyRequest request = new MfaVerifyRequest("123456");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.verifyEmailSetupAndEnable(request));
+    }
+
+    // ──────────────────────────────────────────────
+    // sendLoginMfaCode
+    // ──────────────────────────────────────────────
+
+    @Test
+    void sendLoginMfaCode_success_sendsEmail() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.EMAIL);
+        MfaResendRequest request = new MfaResendRequest("challenge-token");
+
+        when(jwtTokenProvider.validateToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.isMfaChallengeToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("challenge-token")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed-code");
+
+        mfaService.sendLoginMfaCode(request);
+
+        verify(emailService).sendMfaCode(eq("test@codeops.dev"), anyString());
+        verify(mfaEmailCodeRepository).save(any(MfaEmailCode.class));
+    }
+
+    @Test
+    void sendLoginMfaCode_invalidToken_throws() {
+        MfaResendRequest request = new MfaResendRequest("bad-token");
+
+        when(jwtTokenProvider.validateToken("bad-token")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.sendLoginMfaCode(request));
+    }
+
+    @Test
+    void sendLoginMfaCode_notEmailMethod_throws() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
+        MfaResendRequest request = new MfaResendRequest("challenge-token");
+
+        when(jwtTokenProvider.validateToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.isMfaChallengeToken("challenge-token")).thenReturn(true);
+        when(jwtTokenProvider.getUserIdFromToken("challenge-token")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        assertThrows(IllegalArgumentException.class, () -> mfaService.sendLoginMfaCode(request));
+    }
+
+    // ──────────────────────────────────────────────
     // disableMfa
     // ──────────────────────────────────────────────
 
@@ -316,6 +566,7 @@ class MfaServiceTest {
     void disableMfa_success_clearsMfaFields() {
         setSecurityContext(userId);
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
         testUser.setMfaSecret("encrypted-secret");
         testUser.setMfaRecoveryCodes("encrypted-codes");
         MfaSetupRequest request = new MfaSetupRequest("password");
@@ -326,10 +577,14 @@ class MfaServiceTest {
         MfaStatusResponse response = mfaService.disableMfa(request);
 
         assertFalse(response.mfaEnabled());
+        assertEquals("NONE", response.mfaMethod());
+        assertNull(response.recoveryCodesRemaining());
         assertFalse(testUser.getMfaEnabled());
+        assertEquals(MfaMethod.NONE, testUser.getMfaMethod());
         assertNull(testUser.getMfaSecret());
         assertNull(testUser.getMfaRecoveryCodes());
         verify(userRepository).save(testUser);
+        verify(mfaEmailCodeRepository).deleteByUserId(userId);
     }
 
     @Test
@@ -427,24 +682,32 @@ class MfaServiceTest {
     void getMfaStatus_mfaEnabled_returnsTrue() {
         setSecurityContext(userId);
         testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
+        testUser.setMfaRecoveryCodes("encrypted-codes");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(encryptionService.decrypt("encrypted-codes")).thenReturn("[\"11111111\",\"22222222\",\"33333333\"]");
 
         MfaStatusResponse response = mfaService.getMfaStatus();
 
         assertTrue(response.mfaEnabled());
+        assertEquals("TOTP", response.mfaMethod());
+        assertEquals(3, response.recoveryCodesRemaining());
     }
 
     @Test
     void getMfaStatus_mfaDisabled_returnsFalse() {
         setSecurityContext(userId);
         testUser.setMfaEnabled(false);
+        testUser.setMfaMethod(MfaMethod.NONE);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
 
         MfaStatusResponse response = mfaService.getMfaStatus();
 
         assertFalse(response.mfaEnabled());
+        assertEquals("NONE", response.mfaMethod());
+        assertNull(response.recoveryCodesRemaining());
     }
 
     @Test
@@ -454,5 +717,59 @@ class MfaServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> mfaService.getMfaStatus());
+    }
+
+    // ──────────────────────────────────────────────
+    // adminResetMfa
+    // ──────────────────────────────────────────────
+
+    @Test
+    void adminResetMfa_success_clearsMfaFields() {
+        testUser.setMfaEnabled(true);
+        testUser.setMfaMethod(MfaMethod.TOTP);
+        testUser.setMfaSecret("encrypted-secret");
+        testUser.setMfaRecoveryCodes("encrypted-codes");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+        mfaService.adminResetMfa(userId);
+
+        assertFalse(testUser.getMfaEnabled());
+        assertEquals(MfaMethod.NONE, testUser.getMfaMethod());
+        assertNull(testUser.getMfaSecret());
+        assertNull(testUser.getMfaRecoveryCodes());
+        verify(userRepository).save(testUser);
+        verify(mfaEmailCodeRepository).deleteByUserId(userId);
+    }
+
+    @Test
+    void adminResetMfa_userNotFound_throws() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> mfaService.adminResetMfa(userId));
+    }
+
+    // ──────────────────────────────────────────────
+    // maskEmail
+    // ──────────────────────────────────────────────
+
+    @Test
+    void maskEmail_standard_masksCorrectly() {
+        assertEquals("a***@example.com", mfaService.maskEmail("adam@example.com"));
+    }
+
+    @Test
+    void maskEmail_shortLocal_masksCorrectly() {
+        assertEquals("a***@test.com", mfaService.maskEmail("a@test.com"));
+    }
+
+    @Test
+    void maskEmail_null_returnsStars() {
+        assertEquals("***", mfaService.maskEmail(null));
+    }
+
+    @Test
+    void maskEmail_noAt_returnsStars() {
+        assertEquals("***", mfaService.maskEmail("noemail"));
     }
 }
