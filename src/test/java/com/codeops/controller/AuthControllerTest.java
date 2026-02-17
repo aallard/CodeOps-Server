@@ -9,6 +9,7 @@ import com.codeops.dto.response.UserResponse;
 import com.codeops.security.JwtTokenProvider;
 import com.codeops.service.AuditLogService;
 import com.codeops.service.AuthService;
+import com.codeops.service.MfaService;
 import com.codeops.service.TokenBlacklistService;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +40,9 @@ class AuthControllerTest {
     private AuthService authService;
 
     @Mock
+    private MfaService mfaService;
+
+    @Mock
     private AuditLogService auditLogService;
 
     @Mock
@@ -54,7 +58,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new AuthController(authService, auditLogService, jwtTokenProvider, tokenBlacklistService);
+        controller = new AuthController(authService, mfaService, auditLogService, jwtTokenProvider, tokenBlacklistService);
     }
 
     @AfterEach
@@ -68,7 +72,7 @@ class AuthControllerTest {
     }
 
     private UserResponse userResponse() {
-        return new UserResponse(userId, "test@example.com", "Test User", null, true, now, now);
+        return new UserResponse(userId, "test@example.com", "Test User", null, true, now, now, false);
     }
 
     @Test

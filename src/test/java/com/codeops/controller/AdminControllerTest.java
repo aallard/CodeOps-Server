@@ -66,7 +66,7 @@ class AdminControllerTest {
     }
 
     private UserResponse userResponse(UUID id) {
-        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now);
+        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now, false);
     }
 
     @Test
@@ -108,7 +108,7 @@ class AdminControllerTest {
     @Test
     void updateUserStatus_returns200WithUpdatedUserAndLogsAudit() {
         AdminUpdateUserRequest request = new AdminUpdateUserRequest(false);
-        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "Test User", null, false, now, now);
+        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "Test User", null, false, now, now, false);
         when(adminService.updateUserStatus(targetUserId, request)).thenReturn(expected);
 
         ResponseEntity<UserResponse> response = controller.updateUserStatus(targetUserId, request);

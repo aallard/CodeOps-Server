@@ -111,6 +111,13 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
+        // MFA-enabled accounts get a challenge token instead of full tokens
+        if (Boolean.TRUE.equals(user.getMfaEnabled())) {
+            log.info("MFA challenge issued for userId={}", user.getId());
+            String challengeToken = jwtTokenProvider.generateMfaChallengeToken(user);
+            return AuthResponse.mfaChallenge(challengeToken);
+        }
+
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
         log.info("Login success: userId={}, email={}", user.getId(), user.getEmail());
@@ -227,7 +234,8 @@ public class AuthService {
                 user.getAvatarUrl(),
                 user.getIsActive(),
                 user.getLastLoginAt(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getMfaEnabled()
         );
     }
 }

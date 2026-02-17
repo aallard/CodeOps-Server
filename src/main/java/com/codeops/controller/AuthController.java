@@ -1,14 +1,15 @@
 package com.codeops.controller;
 
-import com.codeops.dto.request.ChangePasswordRequest;
-import com.codeops.dto.request.LoginRequest;
-import com.codeops.dto.request.RefreshTokenRequest;
-import com.codeops.dto.request.RegisterRequest;
+import com.codeops.dto.request.*;
 import com.codeops.dto.response.AuthResponse;
+import com.codeops.dto.response.MfaRecoveryResponse;
+import com.codeops.dto.response.MfaSetupResponse;
+import com.codeops.dto.response.MfaStatusResponse;
 import com.codeops.security.JwtTokenProvider;
 import com.codeops.security.SecurityUtils;
 import com.codeops.service.AuditLogService;
 import com.codeops.service.AuthService;
+import com.codeops.service.MfaService;
 import com.codeops.service.TokenBlacklistService;
 import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,6 +42,7 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
+    private final MfaService mfaService;
     private final AuditLogService auditLogService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
@@ -77,7 +79,9 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         log.debug("login called with email={}", request.email());
         AuthResponse response = authService.login(request);
-        auditLogService.log(response.user().id(), null, "USER_LOGIN", "USER", response.user().id(), null);
+        if (response.user() != null) {
+            auditLogService.log(response.user().id(), null, "USER_LOGIN", "USER", response.user().id(), null);
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -137,5 +141,127 @@ public class AuthController {
         log.debug("changePassword called");
         authService.changePassword(request);
         return ResponseEntity.ok().build();
+    }
+
+    // ──────────────────────────────────────────────
+    // MFA Endpoints
+    // ──────────────────────────────────────────────
+
+    /**
+     * Initiates MFA setup by generating a TOTP secret and recovery codes.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/setup}</p>
+     *
+     * <p>Requires authentication. The user must provide their current password for re-verification.
+     * Returns the TOTP secret, a QR code data URI, and a set of one-time recovery codes.</p>
+     *
+     * @param request the MFA setup payload containing the user's current password
+     * @return the MFA setup response with secret, QR URI, and recovery codes
+     */
+    @PostMapping("/mfa/setup")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaSetupResponse> setupMfa(@Valid @RequestBody MfaSetupRequest request) {
+        log.debug("setupMfa called");
+        MfaSetupResponse response = mfaService.setupMfa(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "MFA_SETUP_INITIATED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Verifies a TOTP code and enables MFA on the account.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/verify}</p>
+     *
+     * <p>Requires authentication. This is the second step of MFA setup — after receiving the secret
+     * from {@code /mfa/setup}, the user submits a TOTP code from their authenticator app.</p>
+     *
+     * @param request the verify payload containing the TOTP code
+     * @return the MFA status response confirming MFA is enabled
+     */
+    @PostMapping("/mfa/verify")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaStatusResponse> verifyMfa(@Valid @RequestBody MfaVerifyRequest request) {
+        log.debug("verifyMfa called");
+        MfaStatusResponse response = mfaService.verifyAndEnableMfa(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "MFA_ENABLED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Completes an MFA-challenged login by verifying a TOTP code or recovery code.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/login}</p>
+     *
+     * <p>Publicly accessible (no Bearer token required). The client submits the MFA challenge
+     * token received from the login endpoint along with a TOTP code or recovery code.</p>
+     *
+     * @param request the MFA login payload containing the challenge token and code
+     * @return the full auth response with access token, refresh token, and user details
+     */
+    @PostMapping("/mfa/login")
+    public ResponseEntity<AuthResponse> mfaLogin(@Valid @RequestBody MfaLoginRequest request) {
+        log.debug("mfaLogin called");
+        AuthResponse response = mfaService.verifyMfaLogin(request);
+        auditLogService.log(response.user().id(), null, "MFA_LOGIN", "USER", response.user().id(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Disables MFA for the current user, clearing the stored secret and recovery codes.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/disable}</p>
+     *
+     * <p>Requires authentication. The user must provide their current password for re-verification.</p>
+     *
+     * @param request the disable payload containing the user's current password
+     * @return the MFA status response confirming MFA is disabled
+     */
+    @PostMapping("/mfa/disable")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaStatusResponse> disableMfa(@Valid @RequestBody MfaSetupRequest request) {
+        log.debug("disableMfa called");
+        MfaStatusResponse response = mfaService.disableMfa(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "MFA_DISABLED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Regenerates recovery codes for the current user.
+     *
+     * <p>POST {@code /api/v1/auth/mfa/recovery-codes}</p>
+     *
+     * <p>Requires authentication. MFA must be enabled. The user must provide their current password.</p>
+     *
+     * @param request the request payload containing the user's current password
+     * @return the recovery response containing the new set of recovery codes
+     */
+    @PostMapping("/mfa/recovery-codes")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaRecoveryResponse> regenerateRecoveryCodes(@Valid @RequestBody MfaSetupRequest request) {
+        log.debug("regenerateRecoveryCodes called");
+        MfaRecoveryResponse response = mfaService.regenerateRecoveryCodes(request);
+        auditLogService.log(SecurityUtils.getCurrentUserId(), null, "MFA_RECOVERY_CODES_REGENERATED", "USER",
+                SecurityUtils.getCurrentUserId(), null);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Returns the MFA status for the current user.
+     *
+     * <p>GET {@code /api/v1/auth/mfa/status}</p>
+     *
+     * <p>Requires authentication.</p>
+     *
+     * @return the MFA status response indicating whether MFA is enabled
+     */
+    @GetMapping("/mfa/status")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MfaStatusResponse> getMfaStatus() {
+        log.debug("getMfaStatus called");
+        MfaStatusResponse response = mfaService.getMfaStatus();
+        return ResponseEntity.ok(response);
     }
 }

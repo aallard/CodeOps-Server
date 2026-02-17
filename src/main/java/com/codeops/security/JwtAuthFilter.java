@@ -72,6 +72,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         log.debug("Token extraction attempted for {}", request.getRequestURI());
 
         if (jwtTokenProvider.validateToken(token)) {
+            // Reject MFA challenge tokens for normal API access
+            if (jwtTokenProvider.isMfaChallengeToken(token)) {
+                log.warn("MFA challenge token used for API access from IP: {} path: {}", request.getRemoteAddr(), request.getRequestURI());
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             UUID userId = jwtTokenProvider.getUserIdFromToken(token);
             String email = jwtTokenProvider.getEmailFromToken(token);
             List<String> roles = jwtTokenProvider.getRolesFromToken(token);

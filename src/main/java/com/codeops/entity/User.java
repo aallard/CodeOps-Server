@@ -32,4 +32,14 @@ public class User extends BaseEntity {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Builder.Default
+    @Column(name = "mfa_enabled", nullable = false)
+    private Boolean mfaEnabled = false;
+
+    @Column(name = "mfa_secret", length = 500)
+    private String mfaSecret;
+
+    @Column(name = "mfa_recovery_codes", length = 2000)
+    private String mfaRecoveryCodes;
 }

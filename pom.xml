@@ -83,6 +83,13 @@
             <version>2.25.0</version>
         </dependency>
 
+        <!-- TOTP / MFA -->
+        <dependency>
+            <groupId>dev.samstevens.totp</groupId>
+            <artifactId>totp</artifactId>
+            <version>1.7.1</version>
+        </dependency>
+
         <!-- Utilities -->
         <dependency>
             <groupId>org.projectlombok</groupId>

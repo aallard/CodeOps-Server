@@ -174,6 +174,145 @@ paths:
           description: Password changed successfully
 
   # ──────────────────────────────────────────────
+  # MFA (Multi-Factor Authentication)
+  # ──────────────────────────────────────────────
+  /api/v1/auth/mfa/setup:
+    post:
+      tags: [Authentication]
+      operationId: mfaSetup
+      summary: Initiate MFA setup (generates TOTP secret and recovery codes)
+      description: >-
+        Requires authentication. The user must provide their current password.
+        Returns a TOTP secret, a QR code data URI, and 8 one-time recovery codes.
+        MFA is NOT enabled until verified via /mfa/verify.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaSetupRequest'
+      responses:
+        '200':
+          description: MFA setup initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaSetupResponse'
+        '400':
+          description: MFA already enabled or wrong password
+
+  /api/v1/auth/mfa/verify:
+    post:
+      tags: [Authentication]
+      operationId: mfaVerify
+      summary: Verify a TOTP code and enable MFA
+      description: >-
+        Requires authentication. Second step of MFA setup — submits a TOTP code
+        from the authenticator app to activate MFA on the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: MFA enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaStatusResponse'
+        '400':
+          description: Invalid TOTP code or MFA not set up
+
+  /api/v1/auth/mfa/login:
+    post:
+      tags: [Authentication]
+      operationId: mfaLogin
+      summary: Complete MFA-challenged login with TOTP code or recovery code
+      security: []
+      description: >-
+        Publicly accessible. Submits the MFA challenge token (from login) along
+        with a 6-digit TOTP code or 8-digit recovery code. On success, returns
+        full access and refresh tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaLoginRequest'
+      responses:
+        '200':
+          description: MFA verified, tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid challenge token or MFA code
+
+  /api/v1/auth/mfa/disable:
+    post:
+      tags: [Authentication]
+      operationId: mfaDisable
+      summary: Disable MFA for the current user
+      description: >-
+        Requires authentication. Clears the TOTP secret and recovery codes.
+        The user must provide their current password for re-verification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaSetupRequest'
+      responses:
+        '200':
+          description: MFA disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaStatusResponse'
+        '400':
+          description: MFA not enabled or wrong password
+
+  /api/v1/auth/mfa/recovery-codes:
+    post:
+      tags: [Authentication]
+      operationId: mfaRegenerateRecoveryCodes
+      summary: Regenerate MFA recovery codes
+      description: >-
+        Requires authentication. MFA must be enabled. Replaces all existing
+        recovery codes with a new set of 8 codes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaSetupRequest'
+      responses:
+        '200':
+          description: New recovery codes generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaRecoveryResponse'
+        '400':
+          description: MFA not enabled or wrong password
+
+  /api/v1/auth/mfa/status:
+    get:
+      tags: [Authentication]
+      operationId: mfaGetStatus
+      summary: Get MFA status for the current user
+      responses:
+        '200':
+          description: MFA status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaStatusResponse'
+
+  # ──────────────────────────────────────────────
   # Admin
   # ──────────────────────────────────────────────
   /api/v1/admin/users:
@@ -3303,6 +3442,64 @@ components:
           type: string
           minLength: 8
 
+    # ─── MFA Schemas ──────────────────────────────
+    MfaSetupRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          description: Current account password for re-verification
+
+    MfaVerifyRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 6-digit TOTP code from authenticator app
+
+    MfaLoginRequest:
+      type: object
+      required: [challengeToken, code]
+      properties:
+        challengeToken:
+          type: string
+          description: MFA challenge JWT token received from login
+        code:
+          type: string
+          description: 6-digit TOTP code or 8-digit recovery code
+
+    MfaSetupResponse:
+      type: object
+      properties:
+        secret:
+          type: string
+          description: TOTP secret key (Base32 encoded)
+        qrCodeUri:
+          type: string
+          description: Data URI of QR code PNG image for scanning
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+          description: 8 one-time recovery codes (8 digits each)
+
+    MfaStatusResponse:
+      type: object
+      properties:
+        mfaEnabled:
+          type: boolean
+
+    MfaRecoveryResponse:
+      type: object
+      properties:
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+          description: 8 newly generated one-time recovery codes
+
     PasswordResetRequest:
       type: object
       required: [email]
@@ -4020,13 +4217,24 @@ components:
     # ─── Response DTOs ───────────────────────────
     AuthResponse:
       type: object
+      description: >-
+        Authentication response. For normal logins, contains token, refreshToken, and user.
+        When MFA is required, contains mfaRequired=true and mfaChallengeToken instead.
       properties:
         token:
           type: string
+          description: JWT access token (null when MFA challenge is required)
         refreshToken:
           type: string
+          description: JWT refresh token (null when MFA challenge is required)
         user:
           $ref: '#/components/schemas/UserResponse'
+        mfaRequired:
+          type: boolean
+          description: True when the user has MFA enabled and must complete TOTP verification
+        mfaChallengeToken:
+          type: string
+          description: Short-lived JWT challenge token for MFA login (5 min expiry)
 
     UserResponse:
       type: object
@@ -4042,6 +4250,9 @@ components:
           type: string
         isActive:
           type: boolean
+        mfaEnabled:
+          type: boolean
+          description: Whether multi-factor authentication is enabled on this account
         lastLoginAt:
           type: string
           format: date-time

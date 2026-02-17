@@ -168,7 +168,8 @@ public class UserService {
                 user.getAvatarUrl(),
                 user.getIsActive(),
                 user.getLastLoginAt(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getMfaEnabled()
         );
     }
 }

@@ -87,6 +87,48 @@ public class JwtTokenProvider {
     }
 
     /**
+     * Generates a short-lived MFA challenge token (5 minutes) used to bridge the gap between
+     * password verification and TOTP code submission during two-factor login.
+     *
+     * <p>Contains a {@code "type":"mfa_challenge"} claim to distinguish it from access and refresh
+     * tokens. This token must NOT be accepted for normal API access — only for the MFA verify endpoint.</p>
+     *
+     * @param user the user who has passed password verification but still needs MFA
+     * @return the compact, signed MFA challenge JWT string
+     */
+    public String generateMfaChallengeToken(User user) {
+        Instant now = Instant.now();
+        Instant expiry = now.plus(5, ChronoUnit.MINUTES);
+
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .claim("type", "mfa_challenge")
+                .claim("email", user.getEmail())
+                .claim("jti", UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Determines whether the given JWT token is an MFA challenge token by checking for the
+     * {@code "type":"mfa_challenge"} claim.
+     *
+     * @param token the raw JWT string (without {@code "Bearer "} prefix)
+     * @return {@code true} if the token contains a {@code "type"} claim equal to {@code "mfa_challenge"},
+     *         {@code false} otherwise or if the token cannot be parsed
+     */
+    public boolean isMfaChallengeToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return "mfa_challenge".equals(claims.get("type", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * Generates a signed JWT refresh token containing the user's ID as the subject, a
      * {@code "type":"refresh"} claim to distinguish it from access tokens, and a unique JTI.
      *

@@ -175,6 +175,45 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_mfaEnabled_returnsChallengeToken() {
+        testUser.setMfaEnabled(true);
+        LoginRequest request = new LoginRequest("test@codeops.dev", "password");
+        when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(jwtTokenProvider.generateMfaChallengeToken(testUser)).thenReturn("mfa-challenge-token");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertTrue(response.mfaRequired());
+        assertEquals("mfa-challenge-token", response.mfaChallengeToken());
+        assertNull(response.token());
+        assertNull(response.refreshToken());
+        assertNull(response.user());
+        verify(jwtTokenProvider).generateMfaChallengeToken(testUser);
+        verify(jwtTokenProvider, never()).generateToken(any(User.class), anyList());
+    }
+
+    @Test
+    void login_mfaDisabled_returnsFullTokens() {
+        testUser.setMfaEnabled(false);
+        LoginRequest request = new LoginRequest("test@codeops.dev", "password");
+        when(userRepository.findByEmail("test@codeops.dev")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+        when(teamMemberRepository.findByUserId(userId)).thenReturn(List.of());
+        when(jwtTokenProvider.generateToken(eq(testUser), anyList())).thenReturn("token");
+        when(jwtTokenProvider.generateRefreshToken(testUser)).thenReturn("refresh");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response.token());
+        assertNotNull(response.refreshToken());
+        assertNotNull(response.user());
+        assertNull(response.mfaRequired());
+        assertNull(response.mfaChallengeToken());
+    }
+
+    @Test
     void refreshToken_success() {
         RefreshTokenRequest request = new RefreshTokenRequest("valid-refresh");
         when(jwtTokenProvider.validateToken("valid-refresh")).thenReturn(true);

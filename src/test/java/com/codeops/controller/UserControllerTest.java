@@ -54,7 +54,7 @@ class UserControllerTest {
     }
 
     private UserResponse userResponse(UUID id) {
-        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now);
+        return new UserResponse(id, "user@example.com", "Test User", null, true, now, now, false);
     }
 
     @Test
@@ -84,7 +84,7 @@ class UserControllerTest {
     @Test
     void updateUser_returns200WithUpdatedUser() {
         UpdateUserRequest request = new UpdateUserRequest("New Name", "https://avatar.url");
-        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "New Name", "https://avatar.url", true, now, now);
+        UserResponse expected = new UserResponse(targetUserId, "user@example.com", "New Name", "https://avatar.url", true, now, now, false);
         when(userService.updateUser(targetUserId, request)).thenReturn(expected);
 
         ResponseEntity<UserResponse> response = controller.updateUser(targetUserId, request);
